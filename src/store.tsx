@@ -95,10 +95,18 @@ function loadPrefs(): ViewPrefs {
   }
 }
 
+const WHITE = { kind: "solid", color: "#ffffff" } as const;
+
+/** An empty page whose background was never chosen shows white (it may have been copied from another page). */
+function whitenEmptyPages(p: Project): Project {
+  if (p.spanBackground && isCarousel(p)) return p;
+  return { ...p, pages: p.pages.map((pg) => (pg.elements.length || pg.customBg ? pg : { ...pg, background: { ...WHITE } })) };
+}
+
 export function loadSavedProject(): Project | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Project;
+    if (raw) return whitenEmptyPages(JSON.parse(raw) as Project);
     const old = localStorage.getItem(OLD_KEY);
     if (old) {
       const d = JSON.parse(old) as Doc;
@@ -158,12 +166,14 @@ export function useEditorState(initial: Project | null) {
       if (next === before) return;
       if (history) pushHistory();
       const ownFrame = !isCarousel(p) && !!p.pages[c].frame;
+      const bgChanged = next.background !== before.background;
       let pages = p.pages.map((pg, i) =>
-        i === c ? { ...pageFromDoc(next, pg.id, pg), ...(ownFrame ? { frame: next.frame } : {}) } : pg,
+        i === c
+          ? { ...pageFromDoc(next, pg.id, pg), ...(ownFrame ? { frame: next.frame } : {}), ...(bgChanged ? { customBg: true } : {}) }
+          : pg,
       );
       // a background stretched across the carousel is shared by every slide
-      if (p.spanBackground && isCarousel(p) && next.background !== before.background)
-        pages = pages.map((pg) => ({ ...pg, background: next.background }));
+      if (p.spanBackground && isCarousel(p) && bgChanged) pages = pages.map((pg) => ({ ...pg, background: next.background, customBg: true }));
       commit({ ...p, frame: ownFrame ? p.frame : next.frame, pages }, c);
     },
     [pushHistory, commit],
@@ -241,7 +251,7 @@ export function useEditorState(initial: Project | null) {
       if (!p) return;
       pushHistory();
       const bg = p.pages[curRef.current].background;
-      commit({ ...p, spanBackground: on, pages: on ? p.pages.map((pg) => ({ ...pg, background: bg })) : p.pages }, curRef.current);
+      commit({ ...p, spanBackground: on, pages: on ? p.pages.map((pg) => ({ ...pg, background: bg, customBg: true })) : p.pages }, curRef.current);
     },
     [pushHistory, commit],
   );
@@ -312,7 +322,7 @@ export function useEditorState(initial: Project | null) {
             id: uid(),
             frame: src.frame,
             // a blank page starts white — unless one background is stretched across the whole carousel
-            background: p.spanBackground && isCarousel(p) ? src.background : { kind: "solid", color: "#ffffff" },
+            background: p.spanBackground && isCarousel(p) ? src.background : { ...WHITE },
             elements: [],
             duration: src.duration,
           };

@@ -159,6 +159,8 @@ export interface Page {
   /** Own size — static designs can each have a different size. Carousels share the project frame. */
   frame?: Frame;
   background: Background;
+  /** True once the user picks this page's background themselves (empty pages otherwise show white). */
+  customBg?: boolean;
   elements: El[];
   duration: number;
   audio?: AudioTrack;
