@@ -308,7 +308,14 @@ export function useEditorState(initial: Project | null) {
       const src = p.pages[curRef.current];
       const page: Page = duplicate
         ? { ...src, id: uid(), name: undefined, elements: src.elements.map((e) => ({ ...e, id: uid() })) }
-        : { id: uid(), frame: src.frame, background: src.background, elements: [], duration: src.duration };
+        : {
+            id: uid(),
+            frame: src.frame,
+            // a blank page starts white — unless one background is stretched across the whole carousel
+            background: p.spanBackground && isCarousel(p) ? src.background : { kind: "solid", color: "#ffffff" },
+            elements: [],
+            duration: src.duration,
+          };
       const pages = [...p.pages];
       pages.splice(curRef.current + 1, 0, page);
       commit({ ...p, pages }, curRef.current + 1);
