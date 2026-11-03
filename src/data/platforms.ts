@@ -1,5 +1,7 @@
 import type { IconType } from "react-icons";
 import {
+  FaBehance,
+  FaDribbble,
   FaFacebook,
   FaInstagram,
   FaLinkedin,
@@ -149,6 +151,28 @@ export const PLATFORMS: Platform[] = [
     icon: FaWhatsapp,
     color: "#25D366",
     variants: [{ id: "status", name: "Status", w: 1080, h: 1920, use: "Status update", video: true, safe: STORY_SAFE }],
+  },
+  {
+    id: "behance",
+    name: "Behance",
+    icon: FaBehance,
+    color: "#1769FF",
+    variants: [
+      { id: "cover", name: "Project cover", w: 808, h: 632, use: "The thumbnail people click on" },
+      { id: "image", name: "Project image", w: 1400, h: 1400, use: "Square image inside a project" },
+      { id: "wide", name: "Wide image", w: 1400, h: 788, use: "Full-width image in a project" },
+      { id: "banner", name: "Profile banner", w: 3200, h: 410, use: "Top of your profile" },
+    ],
+  },
+  {
+    id: "dribbble",
+    name: "Dribbble",
+    icon: FaDribbble,
+    color: "#EA4C89",
+    variants: [
+      { id: "shot", name: "Shot", w: 1600, h: 1200, use: "Standard 4:3 shot" },
+      { id: "square", name: "Square shot", w: 1600, h: 1600, use: "Square shot" },
+    ],
   },
   {
     id: "custom",

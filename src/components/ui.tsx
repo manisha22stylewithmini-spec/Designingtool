@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SWATCHES } from "../data/presets";
 import { cn } from "../lib/cn";
 import { useEditor } from "../store";
+import { useCurrentBrand } from "../libraryStore";
 import type { Project } from "../types";
 import { MdColorize } from "react-icons/md";
 
@@ -110,6 +111,7 @@ export function ColorPicker({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { checkpoint, project } = useEditor();
+  const brand = useCurrentBrand();
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
@@ -130,6 +132,22 @@ export function ColorPicker({
       </button>
       {open && (
         <div className="absolute top-full left-0 z-50 mt-2 w-60 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl">
+          {open && brand && brand.colors.length > 0 && (
+            <>
+              <p className="mb-2 text-[11px] font-semibold text-violet-600 uppercase">{brand.name} colours</p>
+              <div className="mb-3 grid grid-cols-10 gap-1">
+                {brand.colors.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => onChange(c, true)}
+                    className={cn("h-5 w-5 rounded-md border border-black/10 transition hover:scale-110", c === value.toLowerCase() && "ring-2 ring-violet-500 ring-offset-1")}
+                    style={{ background: c }}
+                    title={c}
+                  />
+                ))}
+              </div>
+            </>
+          )}
           {open && <DesignColours project={project} value={value} onPick={(c) => onChange(c, true)} />}
           <p className="mb-2 text-[11px] font-semibold text-zinc-500 uppercase">Colours</p>
           <div className="grid grid-cols-10 gap-1">

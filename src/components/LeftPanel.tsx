@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { IconType } from "react-icons";
-import { FiClock, FiChevronsLeft, FiChevronsRight, FiImage, FiLayers, FiLayout, FiMaximize, FiMusic, FiSmile, FiType, FiUploadCloud } from "react-icons/fi";
+import { FiStar, FiClock, FiChevronsLeft, FiChevronsRight, FiImage, FiLayers, FiLayout, FiMaximize, FiMusic, FiSmile, FiType, FiUploadCloud } from "react-icons/fi";
 import { IoShapesOutline } from "react-icons/io5";
 import { MdOutlineFormatColorFill } from "react-icons/md";
 import { SAMPLE_PHOTOS, SHAPES } from "../data/presets";
@@ -14,12 +14,15 @@ import { useEditor } from "../store";
 import { FramesPanel } from "./FramesPanel";
 import { LayersPanel } from "./LayersPanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { BrandKitModal, BrandPanel } from "./library/BrandKit";
+import { useLibrary } from "../libraryStore";
 import { Section } from "./ui";
 import { BackgroundPanel, MusicPanel, PanelHeader, StickersPanel, TextPanel, useAdd } from "./ContentPanels";
 
-export type LeftTab = "templates" | "frames" | "text" | "elements" | "stickers" | "photos" | "background" | "music" | "layers" | "history";
+export type LeftTab = "templates" | "frames" | "text" | "elements" | "stickers" | "photos" | "background" | "music" | "layers" | "history" | "brand";
 
 const TABS: { id: LeftTab; label: string; icon: IconType }[] = [
+  { id: "brand", label: "Brand", icon: FiStar },
   { id: "frames", label: "Size", icon: FiMaximize },
   { id: "templates", label: "Templates", icon: FiLayout },
   { id: "text", label: "Text", icon: FiType },
@@ -100,6 +103,7 @@ export function LeftPanel({
         {tab === "music" && <MusicPanel />}
         {tab === "layers" && <LayersPanel />}
         {tab === "history" && <HistoryPanel />}
+        {tab === "brand" && <BrandTab />}
       </div>
       )}
     </div>
@@ -370,3 +374,15 @@ function PhotosPanel() {
   );
 }
 
+
+function BrandTab() {
+  const lib = useLibrary();
+  const meta = lib.creatives.find((c) => c.id === lib.route.edit);
+  const [kit, setKit] = useState(false);
+  return (
+    <>
+      <BrandPanel brandId={meta?.brandId} onEditKit={() => setKit(true)} />
+      {kit && meta && <BrandKitModal brandId={meta.brandId} onClose={() => setKit(false)} />}
+    </>
+  );
+}

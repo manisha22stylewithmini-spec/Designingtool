@@ -3,6 +3,7 @@ import { FiCheck, FiChevronDown } from "react-icons/fi";
 import { findPlatform, PLATFORMS, ratioLabel, type Platform, type Variant } from "../data/platforms";
 import { cn } from "../lib/cn";
 import { useEditor } from "../store";
+import { isMotion, VIDEO_SIZES } from "../data/postKinds";
 import type { Frame } from "../types";
 import { NumberField } from "./ui";
 
@@ -75,6 +76,39 @@ export function FramesPanel() {
                 {label}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {isMotion(kind) && (
+        <div className="mx-3 mb-3 rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+          <p className="text-xs font-semibold text-zinc-800">Video size</p>
+          <p className="mb-2 text-[11px] text-zinc-500">Choose the frame your video needs.</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {VIDEO_SIZES.map((v) => {
+              const on = doc.frame.w === v.w && doc.frame.h === v.h;
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    if (on) return;
+                    const pv = findPlatform(doc.frame.platformId).variants.find((x) => x.w === v.w && x.h === v.h);
+                    resize({ platformId: doc.frame.platformId, variantId: pv ? pv.id : "custom", w: v.w, h: v.h }, `Video size ${v.label} ${v.ratio}`);
+                  }}
+                  title={v.use}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5 text-left",
+                    on ? "border-violet-500 ring-1 ring-violet-500" : "border-zinc-200 hover:border-violet-300",
+                  )}
+                >
+                  <AspectThumb w={v.w} h={v.h} color={on ? "#7c3aed" : "#a1a1aa"} size={20} />
+                  <span>
+                    <span className="block text-[11px] font-semibold text-zinc-800">{v.label}</span>
+                    <span className="block text-[10px] text-zinc-500">{v.ratio}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

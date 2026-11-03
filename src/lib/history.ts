@@ -13,7 +13,6 @@ export interface Snapshot {
 
 const DB = "postcraft-history";
 const STORE = "history";
-const KEY = "current";
 const REF = "§ref:";
 
 function open(): Promise<IDBDatabase> {
@@ -56,14 +55,15 @@ function unpack(value: unknown, table: string[]): unknown {
   return value;
 }
 
-export async function saveHistory(past: Snapshot[], future: Snapshot[], currentAt: number): Promise<void> {
+/** History is kept per creative (key = creative id). */
+export async function saveHistory(key: string, past: Snapshot[], future: Snapshot[], currentAt: number): Promise<void> {
   const table: string[] = [];
   const data = pack({ past, future, currentAt }, table, new Map());
   try {
     const db = await open();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).put({ data, table, savedAt: Date.now() }, KEY);
+      tx.objectStore(STORE).put({ data, table, savedAt: Date.now() }, key);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -72,11 +72,11 @@ export async function saveHistory(past: Snapshot[], future: Snapshot[], currentA
   }
 }
 
-export async function loadHistory(): Promise<{ past: Snapshot[]; future: Snapshot[]; currentAt: number } | null> {
+export async function loadHistory(key: string): Promise<{ past: Snapshot[]; future: Snapshot[]; currentAt: number } | null> {
   try {
     const db = await open();
     const raw = await new Promise<{ data: unknown; table: string[] } | undefined>((resolve) => {
-      const req = db.transaction(STORE).objectStore(STORE).get(KEY);
+      const req = db.transaction(STORE).objectStore(STORE).get(key);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => resolve(undefined);
     });
@@ -87,10 +87,10 @@ export async function loadHistory(): Promise<{ past: Snapshot[]; future: Snapsho
   }
 }
 
-export async function clearSavedHistory(): Promise<void> {
+export async function clearSavedHistory(key: string): Promise<void> {
   try {
     const db = await open();
-    db.transaction(STORE, "readwrite").objectStore(STORE).delete(KEY);
+    db.transaction(STORE, "readwrite").objectStore(STORE).delete(key);
   } catch {
     /* ignore */
   }

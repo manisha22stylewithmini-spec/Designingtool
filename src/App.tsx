@@ -5,88 +5,74 @@ import { ExportModal } from "./components/ExportModal";
 import { LeftPanel, type LeftTab } from "./components/LeftPanel";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Stage } from "./components/Stage";
-import { StartScreen } from "./components/StartScreen";
 import { Timeline } from "./components/Timeline";
 import { TopBar } from "./components/TopBar";
-import { findPlatform, findVariant } from "./data/platforms";
 import { isMotion } from "./data/postKinds";
-import { makeText } from "./lib/factory";
 import { useActions } from "./components/useActions";
 import { ensureFont } from "./data/fonts";
-import { EditorContext, loadSavedProject, useEditor, useEditorState, type Editor } from "./store";
+import { EditorContext, prepareProject, useEditor, useEditorState, type Editor } from "./store";
+import { LibraryContext, useLibrary, useLibraryState } from "./libraryStore";
+import { LibraryScreen, NewCreativeDialog } from "./components/library/LibraryScreen";
+import { EditorCrumbs } from "./components/library/EditorCrumbs";
+import { getProject } from "./lib/library";
 import { PageStrip } from "./components/PageStrip";
 import { restoreMedia } from "./lib/media";
-import type { Doc, PostKind } from "./types";
-
-function starterDoc(platformId: string, variantId: string): Doc {
-  const v = findVariant(platformId, variantId)!;
-  const frame = { platformId, variantId, w: v.w, h: v.h };
-  const U = Math.min(v.w, v.h);
-  const duration = 5;
-  const title = makeText(frame, duration, {
-    text: "Your big idea",
-    fontSize: U * 0.11,
-    fontWeight: 800,
-    fontFamily: "Poppins",
-    color: "#1b1f3b",
-    y: v.h * 0.4,
-    name: "Headline",
-  });
-  title.anim = { ...title.anim, inType: "slideUp" };
-  const sub = makeText(frame, duration, {
-    text: "Double-click any text to change it",
-    fontSize: U * 0.045,
-    fontWeight: 500,
-    fontFamily: "Inter",
-    color: "#3f3f46",
-    y: v.h * 0.4 + U * 0.16,
-    name: "Subtitle",
-  });
-  sub.anim = { ...sub.anim, inType: "fade", start: 0.5 };
-  return {
-    frame,
-    background: { kind: "gradient", from: "#a18cd1", to: "#fbc2eb", angle: 135 },
-    elements: [title, sub],
-    duration,
-  };
-}
+import type { PostKind, Project } from "./types";
 
 
-const saved = loadSavedProject();
 
 export default function App() {
-  const ed = useEditorState(saved);
-  const [showStart, setShowStart] = useState(!ed.doc);
-  // Uploaded videos live in IndexedDB — load them before showing a saved design.
-  const [mediaReady, setMediaReady] = useState(false);
+  const lib = useLibraryState();
+  if (!lib.ready) return <div className="flex h-full items-center justify-center text-sm text-zinc-500">Opening your library…</div>;
+  return (
+    <LibraryContext.Provider value={lib}>
+      {lib.route.edit ? <EditorHost key={lib.route.edit} id={lib.route.edit} /> : <LibraryScreen />}
+    </LibraryContext.Provider>
+  );
+}
+
+/** Loads one creative from the library, then opens the editor on it. */
+function EditorHost({ id }: { id: string }) {
+  const lib = useLibrary();
+  const [project, setProject] = useState<Project | null | undefined>(undefined);
   useEffect(() => {
-    const refs = saved?.pages.flatMap((p) => p.elements.map((e) => e.src ?? "")) ?? [];
-    restoreMedia(refs).finally(() => setMediaReady(true));
-  }, []);
-
-  if (!ed.doc) {
+    getProject(id).then(async (p) => {
+      if (!p) return setProject(null);
+      // uploaded videos / music live in IndexedDB — load them first
+      await restoreMedia([...p.pages.flatMap((pg) => [...pg.elements.map((e) => e.src ?? ""), pg.audio?.src ?? ""])]);
+      setProject(prepareProject(p));
+    });
+  }, [id]);
+  if (project === undefined) return <div className="flex h-full items-center justify-center text-sm text-zinc-500">Loading your design…</div>;
+  if (project === null)
     return (
-      <StartScreen
-        onPick={(p, v, k) => {
-          ed.newProject(starterDoc(p, v), k);
-          setShowStart(false);
-        }}
-      />
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-zinc-500">
+        This creative couldn't be found.
+        <button onClick={() => lib.go({})} className="rounded-lg bg-violet-600 px-4 py-2 font-semibold text-white">
+          Back to the library
+        </button>
+      </div>
     );
-  }
-  if (!mediaReady) return <div className="flex h-full items-center justify-center text-sm text-zinc-500">Loading your design…</div>;
+  return <EditorApp id={id} initial={project} />;
+}
 
+function EditorApp({ id, initial }: { id: string; initial: Project }) {
+  const lib = useLibrary();
+  const ed = useEditorState(initial, { id, onSave: (p) => lib.saveProject(id, p) });
   return (
     <EditorContext.Provider value={ed as Editor}>
-      <Workspace showStart={showStart} setShowStart={setShowStart} />
+      <Workspace creativeId={id} />
     </EditorContext.Provider>
   );
 }
 
-function Workspace({ showStart, setShowStart }: { showStart: boolean; setShowStart: (v: boolean) => void }) {
+function Workspace({ creativeId }: { creativeId: string }) {
   const ed = useEditor();
+  const lib = useLibrary();
+  const meta = lib.creatives.find((c) => c.id === creativeId);
+  const [newCreative, setNewCreative] = useState(false);
   const { doc, mode, setMode, playing, setPlaying, time, setTime, selected, setSelected, selectedEls, update, updateEls, undo, redo, notify, toast, hint } = ed;
-  const { kind, setKind, project, setFrame } = ed;
+  const { kind, setKind, project } = ed;
   const [tab, setTab] = useState<LeftTab>("templates");
   // Side panels: the left one can be hidden; the right one only shows when something is selected
   // (or when the user opens page settings), so the canvas gets the space.
@@ -243,18 +229,8 @@ function Workspace({ showStart, setShowStart }: { showStart: boolean; setShowSta
       setMode("animate");
       setTime(0);
       setPlaying(true);
-      notify("Animated post — pick how each item moves, then export an MP4");
-    }
-    if (k === "reel") {
-      const { frame } = project;
-      if (frame.h <= frame.w) {
-        const own = findPlatform(frame.platformId).variants.find((v) => v.video && v.h > v.w);
-        const pid = own ? frame.platformId : "instagram";
-        const v = own ?? findVariant("instagram", "reel")!;
-        setFrame({ platformId: pid, variantId: v.id, w: v.w, h: v.h });
-        notify(`Reel — frame switched to ${findPlatform(pid).name} ${v.name} (9:16). Upload clips from the Uploads tab.`);
-      } else notify("Reel — upload your clips from the Uploads tab, then trim them on the timeline");
-      openTab("photos");
+      openTab("frames");
+      notify("Video — pick the size you need on the left (9:16 Reel, 4:5, 1:1 or 16:9), then animate or add clips");
     }
   };
 
@@ -280,7 +256,8 @@ function Workspace({ showStart, setShowStart }: { showStart: boolean; setShowSta
       <TopBar
         onKind={chooseKind}
         onExport={() => setShowExport(true)}
-        onNew={() => setShowStart(true)}
+        onNew={() => setNewCreative(true)}
+        crumbs={meta && <EditorCrumbs meta={meta} />}
       />
       <div className="flex min-h-0 flex-1">
         <LeftPanel tab={tab} setTab={setTab} open={leftOpen} setOpen={toggleLeft} />
@@ -338,17 +315,8 @@ function Workspace({ showStart, setShowStart }: { showStart: boolean; setShowSta
         </div>
       )}
       {showExport && <ExportModal onClose={() => setShowExport(false)} />}
-      {showStart && (
-        <StartScreen
-          onClose={() => setShowStart(false)}
-          onPick={(p, v, k) => {
-            ed.newProject(starterDoc(p, v), k);
-            setShowStart(false);
-            setMode(k === "animated" ? "animate" : "design");
-            if (k === "reel") openTab("photos");
-            notify("New design started — the old one can be restored with ⌘Z");
-          }}
-        />
+      {newCreative && meta && (
+        <NewCreativeDialog ctx={{ brandId: meta.brandId, date: meta.date, platform: meta.platformId, kind: meta.kind }} onClose={() => setNewCreative(false)} />
       )}
     </div>
   );

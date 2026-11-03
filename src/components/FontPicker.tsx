@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FiCheck, FiChevronDown, FiSearch } from "react-icons/fi";
 import { ensureFont, FONT_CATS, FONT_LIBRARY, previewFont, type FontCat } from "../data/fonts";
 import { cn } from "../lib/cn";
+import { useCurrentBrand } from "../libraryStore";
 
 function Row({ name, active, onPick }: { name: string; active: boolean; onPick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
@@ -41,6 +42,7 @@ export function FontPicker({ value, onChange }: { value: string; onChange: (font
     previewFont(value);
   }, [value]);
 
+  const brand = useCurrentBrand();
   const list = FONT_LIBRARY.filter((f) => (cat === "All" || f.cat === cat) && f.name.toLowerCase().includes(q.toLowerCase()));
 
   return (
@@ -74,6 +76,24 @@ export function FontPicker({ value, onChange }: { value: string; onChange: (font
             </div>
           </div>
           <div className="thin-scroll max-h-72 overflow-y-auto p-1">
+            {brand && brand.fonts.length > 0 && !q && cat === "All" && (
+              <>
+                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold text-violet-600 uppercase">{brand.name} fonts</p>
+                {brand.fonts.map((f) => (
+                  <Row
+                    key={"b" + f}
+                    name={f}
+                    active={f === value}
+                    onPick={() => {
+                      ensureFont(f);
+                      onChange(f);
+                      setOpen(false);
+                    }}
+                  />
+                ))}
+                <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-semibold text-zinc-400 uppercase">All fonts</p>
+              </>
+            )}
             {list.map((fnt) => (
               <Row
                 key={fnt.name}

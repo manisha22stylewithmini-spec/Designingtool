@@ -7,13 +7,13 @@ import type { PostKind } from "../types";
 import { useEditor } from "../store";
 import { IconBtn } from "./ui";
 
-export function Logo() {
+export function Logo({ compact }: { compact?: boolean }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-sm font-black text-white shadow">
         P
       </div>
-      <span className="text-[15px] font-bold tracking-tight text-zinc-900">
+      <span className={cn("text-[15px] font-bold tracking-tight text-zinc-900", compact && "hidden 2xl:inline")}>
         Post<span className="text-violet-600">Craft</span>
       </span>
     </div>
@@ -24,19 +24,21 @@ export function TopBar({
   onKind,
   onExport,
   onNew,
+  crumbs,
 }: {
   onKind: (k: PostKind) => void;
   onExport: () => void;
   onNew: () => void;
+  crumbs?: React.ReactNode;
 }) {
   const { undo, redo, canUndo, canRedo, mode, setMode, setPlaying, setTime, kind } = useEditor();
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-4">
-      <Logo />
-      <IconBtn title="New design" onClick={onNew}>
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-4">
+      <Logo compact={!!crumbs} />
+      {crumbs}
+      <IconBtn title="New creative" onClick={onNew}>
         <FiFilePlus />
-        <span className="hidden text-xs xl:inline">New</span>
       </IconBtn>
 
       <KindToggle value={kind} onChange={onKind} />
@@ -116,7 +118,7 @@ function KindToggle({ value, onChange }: { value: PostKind; onChange: (k: PostKi
       ref={wrap}
       role="radiogroup"
       aria-label="Type of post"
-      className="relative mx-auto hidden items-center gap-1 rounded-full border border-zinc-900/10 bg-zinc-50 p-1 md:flex"
+      className="relative mx-auto hidden shrink-0 items-center gap-1 rounded-full border border-zinc-900/10 bg-zinc-50 p-1 md:flex"
     >
       <span
         aria-hidden

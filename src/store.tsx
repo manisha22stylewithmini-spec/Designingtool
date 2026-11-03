@@ -4,9 +4,8 @@ import { textHeight } from "./lib/geometry";
 import type { Doc, El, Frame, Mode, Page, PostKind, Project, RulerGuide } from "./types";
 import { clearSavedHistory, loadHistory, saveHistory, type Snapshot } from "./lib/history";
 import { keyValue, setKey } from "./lib/animation";
+import { normKind } from "./data/postKinds";
 
-const STORAGE_KEY = "postcraft-project-v2";
-const OLD_KEY = "postcraft-doc-v1";
 const HISTORY_LIMIT = 80;
 
 export type Tool = "select" | "hand" | "pen" | "pencil" | "rect" | "ellipse" | "line" | "text" | "scale";
@@ -109,22 +108,10 @@ function whitenEmptyPages(p: Project): Project {
   return { ...p, pages: p.pages.map((pg) => (pg.elements.length || pg.customBg ? pg : { ...pg, background: { ...WHITE } })) };
 }
 
-export function loadSavedProject(): Project | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return whitenEmptyPages(JSON.parse(raw) as Project);
-    const old = localStorage.getItem(OLD_KEY);
-    if (old) {
-      const d = JSON.parse(old) as Doc;
-      return { frame: d.frame, pages: [pageFromDoc(d)] };
-    }
-  } catch {
-    /* ignore broken save */
-  }
-  return null;
-}
+/** Tidy a project as it's opened from the library. */
+export const prepareProject = (p: Project): Project => whitenEmptyPages(p);
 
-export function useEditorState(initial: Project | null) {
+export function useEditorState(initial: Project | null, opts: { id: string; onSave: (p: Project) => void }) {
   const [project, setProject] = useState<Project | null>(initial);
   const [cur, setCur] = useState(0);
   const past = useRef<Snapshot[]>([]);
@@ -452,14 +439,14 @@ export function useEditorState(initial: Project | null) {
   const clearHistory = useCallback(() => {
     past.current = [];
     future.current = [];
-    clearSavedHistory();
+    clearSavedHistory(opts.id);
     setHistVersion((v) => v + 1);
   }, []);
 
   // ---------- history is saved in the browser, so undo survives a reload ----------
   const [histLoaded, setHistLoaded] = useState(false);
   useEffect(() => {
-    loadHistory().then((h) => {
+    loadHistory(opts.id).then((h) => {
       if (h && projRef.current && !past.current.length) {
         past.current = h.past.slice(-HISTORY_LIMIT);
         future.current = h.future;
@@ -482,27 +469,23 @@ export function useEditorState(initial: Project | null) {
     return () => document.fonts.removeEventListener("loadingdone", refresh);
   }, [commit]);
 
-  // Autosave
+  // Autosave into the library
+  const onSave = useRef(opts.onSave);
+  onSave.current = opts.onSave;
   useEffect(() => {
     if (!project) return;
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
-      } catch {
-        /* storage full (large photos) – ignore */
-      }
-    }, 400);
+    const t = setTimeout(() => onSave.current(project), 400);
     return () => clearTimeout(t);
   }, [project]);
 
   useEffect(() => {
     if (!histLoaded || !project) return;
-    const t = setTimeout(() => saveHistory(past.current, future.current, currentAt.current), 800);
+    const t = setTimeout(() => saveHistory(opts.id, past.current, future.current, currentAt.current), 800);
     return () => clearTimeout(t);
   }, [project, cur, histLoaded]);
 
   const doc = useMemo(() => (project ? docOf(project, cur) : null), [project, cur]);
-  const kind: PostKind = project?.kind ?? (project && project.pages.length > 1 ? "carousel" : "static");
+  const kind: PostKind = normKind(project?.kind ?? (project && project.pages.length > 1 ? "carousel" : "static"));
 
   const selectedEls = useMemo(
     () => (doc ? doc.elements.filter((e) => selected.includes(e.id)) : []),
