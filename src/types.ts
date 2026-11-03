@@ -17,7 +17,30 @@ export type ShapeKind =
   | "line"
   | "bubble";
 
-export type ElType = "text" | "shape" | "image" | "video";
+export type ElType = "text" | "shape" | "image" | "video" | "path";
+
+/**
+ * One anchor of a vector path. Coordinates are normalised to the element box (0..1),
+ * so resizing the element reshapes the path. Handles are offsets from the anchor.
+ */
+export interface PathNode {
+  x: number;
+  y: number;
+  ix: number; // incoming handle
+  iy: number;
+  ox: number; // outgoing handle
+  oy: number;
+  kind: "corner" | "smooth";
+}
+
+/** Properties that can be keyframed on the timeline (After Effects style). */
+export type KeyProp = "position" | "scale" | "rotation" | "opacity";
+export type KeyEase = "linear" | "ease" | "easeIn" | "easeOut" | "hold";
+export interface Keyframe {
+  t: number; // seconds
+  v: number[]; // position: [x, y]; scale: [%]; rotation: [deg]; opacity: [0..1]
+  ease: KeyEase; // how it moves towards the next keyframe
+}
 
 export type InAnim =
   | "none"
@@ -73,6 +96,13 @@ export interface El {
   shadow: Shadow;
   anim: Anim;
 
+  // vector path (pen / pencil)
+  nodes?: PathNode[];
+  closed?: boolean;
+
+  /** Keyframed properties — when a property has keyframes they decide its value over time. */
+  keys?: Partial<Record<KeyProp, Keyframe[]>>;
+
   // shape
   shape?: ShapeKind;
   fill?: string;
@@ -110,6 +140,7 @@ export interface El {
   cropY?: number;
   cropZoom?: number; // >= 1
   mask?: ShapeKind; // cut the photo into a shape
+  maskNodes?: PathNode[]; // or a custom vector mask (pen / "Use as mask"), normalised to the box
 
   // video
   trimStart?: number; // seconds into the clip where playback starts

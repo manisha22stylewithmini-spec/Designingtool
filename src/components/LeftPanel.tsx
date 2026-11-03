@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { IconType } from "react-icons";
-import { FiChevronsLeft, FiChevronsRight, FiImage, FiLayers, FiLayout, FiMaximize, FiMusic, FiSmile, FiType, FiUploadCloud } from "react-icons/fi";
+import { FiClock, FiChevronsLeft, FiChevronsRight, FiImage, FiLayers, FiLayout, FiMaximize, FiMusic, FiSmile, FiType, FiUploadCloud } from "react-icons/fi";
 import { IoShapesOutline } from "react-icons/io5";
 import { MdOutlineFormatColorFill } from "react-icons/md";
 import { SAMPLE_PHOTOS, SHAPES } from "../data/presets";
@@ -13,10 +13,11 @@ import { putMedia, resolveSrc } from "../lib/media";
 import { useEditor } from "../store";
 import { FramesPanel } from "./FramesPanel";
 import { LayersPanel } from "./LayersPanel";
+import { HistoryPanel } from "./HistoryPanel";
 import { Section } from "./ui";
 import { BackgroundPanel, MusicPanel, PanelHeader, StickersPanel, TextPanel, useAdd } from "./ContentPanels";
 
-export type LeftTab = "templates" | "frames" | "text" | "elements" | "stickers" | "photos" | "background" | "music" | "layers";
+export type LeftTab = "templates" | "frames" | "text" | "elements" | "stickers" | "photos" | "background" | "music" | "layers" | "history";
 
 const TABS: { id: LeftTab; label: string; icon: IconType }[] = [
   { id: "frames", label: "Size", icon: FiMaximize },
@@ -28,6 +29,7 @@ const TABS: { id: LeftTab; label: string; icon: IconType }[] = [
   { id: "background", label: "Background", icon: MdOutlineFormatColorFill },
   { id: "music", label: "Music", icon: FiMusic },
   { id: "layers", label: "Layers", icon: FiLayers },
+  { id: "history", label: "History", icon: FiClock },
 ];
 
 export function LeftPanel({
@@ -97,6 +99,7 @@ export function LeftPanel({
         {tab === "background" && <BackgroundPanel />}
         {tab === "music" && <MusicPanel />}
         {tab === "layers" && <LayersPanel />}
+        {tab === "history" && <HistoryPanel />}
       </div>
       )}
     </div>

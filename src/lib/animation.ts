@@ -1,4 +1,4 @@
-import type { Easing, El, Frame } from "../types";
+import type { Easing, El, Frame, KeyEase, KeyProp } from "../types";
 
 export interface AnimState {
   visible: boolean;
@@ -151,6 +151,10 @@ export function animState(el: El, t: number, frame: Frame): AnimState {
     }
   }
 
+  // keyframed scale (position / rotation / opacity are applied by atTime)
+  const ks = keyValue(el, "scale", t);
+  if (ks) s.scale *= ks[0] / 100;
+
   return s;
 }
 
@@ -162,4 +166,84 @@ export function fmtTime(t: number): string {
 export function clipTime(el: El, t: number) {
   const len = el.videoDuration ?? 0;
   return Math.min(Math.max(0, len - 0.05), (el.trimStart ?? 0) + Math.max(0, t - el.anim.start));
+}
+
+// ---------- keyframes (After Effects style) ----------
+
+export const KEY_PROPS: { id: KeyProp; label: string; unit: string }[] = [
+  { id: "position", label: "Position", unit: "px" },
+  { id: "scale", label: "Scale", unit: "%" },
+  { id: "rotation", label: "Rotation", unit: "°" },
+  { id: "opacity", label: "Opacity", unit: "%" },
+];
+
+export const KEY_EASES: { id: KeyEase; label: string }[] = [
+  { id: "ease", label: "Smooth (ease in & out)" },
+  { id: "linear", label: "Linear" },
+  { id: "easeIn", label: "Ease in (speed up)" },
+  { id: "easeOut", label: "Ease out (slow down)" },
+  { id: "hold", label: "Hold (jump)" },
+];
+
+function keyEase(kind: KeyEase, p: number) {
+  switch (kind) {
+    case "linear":
+      return p;
+    case "easeIn":
+      return p * p * p;
+    case "easeOut":
+      return 1 - Math.pow(1 - p, 3);
+    case "hold":
+      return 0;
+    default:
+      return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+  }
+}
+
+/** Interpolated value of a keyframed property at time t, or null when it has no keyframes. */
+export function keyValue(el: El, prop: KeyProp, t: number): number[] | null {
+  const ks = el.keys?.[prop];
+  if (!ks?.length) return null;
+  if (t <= ks[0].t) return ks[0].v;
+  const last = ks[ks.length - 1];
+  if (t >= last.t) return last.v;
+  for (let i = 0; i < ks.length - 1; i++) {
+    const a = ks[i];
+    const b = ks[i + 1];
+    if (t >= a.t && t < b.t) {
+      const p = keyEase(a.ease, (t - a.t) / Math.max(1e-6, b.t - a.t));
+      return a.v.map((v, j) => v + (b.v[j] - v) * p);
+    }
+  }
+  return last.v;
+}
+
+/** The element as it is at time t: keyframed position / rotation / opacity applied. (Scale goes through animState.) */
+export function atTime(el: El, t: number): El {
+  if (!el.keys) return el;
+  const pos = keyValue(el, "position", t);
+  const rot = keyValue(el, "rotation", t);
+  const op = keyValue(el, "opacity", t);
+  if (!pos && !rot && !op) return el;
+  return { ...el, ...(pos ? { x: pos[0], y: pos[1] } : {}), ...(rot ? { rotation: rot[0] } : {}), ...(op ? { opacity: op[0] } : {}) };
+}
+
+/** Current value of a property (keyframed or not), in the units used by keyframes. */
+export function propValue(el: El, prop: KeyProp, t: number): number[] {
+  const k = keyValue(el, prop, t);
+  if (k) return k;
+  if (prop === "position") return [el.x, el.y];
+  if (prop === "rotation") return [el.rotation];
+  if (prop === "opacity") return [el.opacity];
+  return [100];
+}
+
+/** Add or replace the keyframe at time t (keeps keyframes sorted). */
+export function setKey(el: El, prop: KeyProp, t: number, v: number[]): El {
+  const ks = [...(el.keys?.[prop] ?? [])];
+  const i = ks.findIndex((k) => Math.abs(k.t - t) < 0.02);
+  if (i >= 0) ks[i] = { ...ks[i], v };
+  else ks.push({ t: Math.round(t * 100) / 100, v, ease: "ease" });
+  ks.sort((a, b) => a.t - b.t);
+  return { ...el, keys: { ...el.keys, [prop]: ks } };
 }

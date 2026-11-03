@@ -8,6 +8,7 @@ let styleClipboard: { type: El["type"]; style: Partial<El> } | null = null;
 const STYLE_KEYS: Record<El["type"], (keyof El)[]> = {
   text: ["fontFamily", "fontSize", "fontWeight", "italic", "underline", "uppercase", "align", "color", "letterSpacing", "lineHeight", "effect", "effectColor", "effectSize"],
   shape: ["fill", "stroke", "strokeWidth", "radius"],
+  path: ["fill", "stroke", "strokeWidth"],
   image: ["brightness", "contrast", "saturation", "blur", "grayscale", "radius", "stroke", "strokeWidth", "mask"],
   video: ["brightness", "contrast", "saturation", "blur", "grayscale", "radius", "stroke", "strokeWidth", "mask"],
 };

@@ -1,10 +1,11 @@
 import type { Background, Doc, El } from "../types";
-import { animState, STATIC, type AnimState } from "./animation";
+import { animState, atTime, STATIC, type AnimState } from "./animation";
 import { filterCss } from "./factory";
 import { fontString, layoutText, lineWidth, shapePath } from "./geometry";
 import { resolveSrc } from "./media";
 import { effectParams } from "./textEffects";
 import { ensureFont } from "../data/fonts";
+import { nodesToPath } from "./vector";
 
 const imgCache = new Map<string, HTMLImageElement>();
 /** Hidden <video> players used while exporting, keyed by element id. */
@@ -152,11 +153,27 @@ function drawElement(c: CanvasRenderingContext2D, el: El, st: AnimState) {
       c.lineJoin = "round";
       c.stroke(p);
     }
+  } else if (el.type === "path") {
+    const p = new Path2D(nodesToPath(el.nodes ?? [], !!el.closed, el.w, el.h));
+    applyShadow(c, el);
+    if (el.fill && el.fill !== "transparent") {
+      c.fillStyle = el.fill;
+      c.fill(p);
+      c.shadowColor = "transparent";
+    }
+    if ((el.strokeWidth ?? 0) > 0) {
+      c.lineWidth = el.strokeWidth!;
+      c.strokeStyle = el.stroke ?? "#000";
+      c.lineJoin = "round";
+      c.lineCap = "round";
+      c.stroke(p);
+    }
   } else if (el.type === "image" || el.type === "video") {
     const v = el.type === "video" ? videoPlayers.get(el.id) : undefined;
     const img: CanvasImageSource | undefined =
       el.type === "video" ? (v && v.readyState >= 2 ? v : undefined) : el.src ? imgCache.get(el.src) : undefined;
-    const clip = new Path2D(el.mask ? shapePath(el.mask, el.w, el.h) : shapePath("rect", el.w, el.h, el.radius));
+    const maskD = el.maskNodes?.length ? nodesToPath(el.maskNodes, true, el.w, el.h) : null;
+    const clip = new Path2D(maskD ?? (el.mask ? shapePath(el.mask, el.w, el.h) : shapePath("rect", el.w, el.h, el.radius)));
     if (el.shadow.on) {
       c.save();
       applyShadow(c, el);
@@ -180,7 +197,7 @@ function drawElement(c: CanvasRenderingContext2D, el: El, st: AnimState) {
       c.lineWidth = sw;
       c.strokeStyle = el.stroke ?? "#fff";
       c.lineJoin = "round";
-      c.stroke(new Path2D(el.mask ? shapePath(el.mask, el.w, el.h, 0, sw / 2) : shapePath("rect", el.w, el.h, el.radius, sw / 2)));
+      c.stroke(new Path2D(maskD ?? (el.mask ? shapePath(el.mask, el.w, el.h, 0, sw / 2) : shapePath("rect", el.w, el.h, el.radius, sw / 2))));
     }
   } else if (el.type === "text") {
     const fx = effectParams(el);
@@ -301,9 +318,12 @@ export function renderDoc(c: CanvasRenderingContext2D, doc: Doc, t: number | nul
     c.restore();
   } else drawBackground(c, doc.background, w, h);
   // items spilling over from the neighbouring slides sit underneath this slide's own items
-  for (const el of doc.context?.neighbours ?? []) drawElement(c, el, t === null ? STATIC : animState(el, t, doc.frame));
-  for (const el of doc.elements) {
-    drawElement(c, el, t === null ? STATIC : animState(el, t, doc.frame));
-  }
+  const draw = (el: El) => {
+    if (t === null) return drawElement(c, el, STATIC);
+    const e = atTime(el, t);
+    drawElement(c, e, animState(e, t, doc.frame));
+  };
+  for (const el of doc.context?.neighbours ?? []) draw(el);
+  for (const el of doc.elements) draw(el);
   c.restore();
 }

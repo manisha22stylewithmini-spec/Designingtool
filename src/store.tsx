@@ -2,12 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { resizeElements, uid } from "./lib/factory";
 import { textHeight } from "./lib/geometry";
 import type { Doc, El, Frame, Mode, Page, PostKind, Project, RulerGuide } from "./types";
+import { clearSavedHistory, loadHistory, saveHistory, type Snapshot } from "./lib/history";
+import { keyValue, setKey } from "./lib/animation";
 
 const STORAGE_KEY = "postcraft-project-v2";
 const OLD_KEY = "postcraft-doc-v1";
 const HISTORY_LIMIT = 80;
 
-type Snapshot = { project: Project; cur: number };
+export type Tool = "select" | "hand" | "pen" | "pencil" | "rect" | "ellipse" | "line" | "text" | "scale";
 
 function normalizeEls(els: El[]): El[] {
   let changed = false;
@@ -71,7 +73,9 @@ export interface ViewPrefs {
   marginPct: number;
   safe: boolean;
   pixel: boolean;
-  boardGap: number; // Free board: space between static designs, % of the largest frame side
+  boardGap: number;
+  penColor: string;
+  penWidth: number; // Free board: space between static designs, % of the largest frame side
 }
 const PREFS_KEY = "postcraft-view-v1";
 const DEFAULT_PREFS: ViewPrefs = {
@@ -86,6 +90,8 @@ const DEFAULT_PREFS: ViewPrefs = {
   safe: true,
   pixel: false,
   boardGap: 12,
+  penColor: "#111111",
+  penWidth: 6,
 };
 function loadPrefs(): ViewPrefs {
   try {
@@ -132,9 +138,16 @@ export function useEditorState(initial: Project | null) {
   const [hint, setHint] = useState<string | null>(null);
   /** Photo / video currently being cropped (pan & zoom inside its box). */
   const [cropId, setCropId] = useState<string | null>(null);
+  const [tool, setTool] = useState<Tool>("select");
 
   const projRef = useRef(project);
   const curRef = useRef(cur);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const timeRef = useRef(time);
+  timeRef.current = time;
+  /** When the current state was reached (shown in the History panel). */
+  const currentAt = useRef(Date.now());
 
   const commit = useCallback((p: Project, c: number) => {
     projRef.current = p;
@@ -147,8 +160,9 @@ export function useEditorState(initial: Project | null) {
 
   const pushHistory = useCallback(() => {
     if (!projRef.current) return;
-    past.current = [...past.current.slice(-HISTORY_LIMIT), { project: projRef.current, cur: curRef.current }];
+    past.current = [...past.current.slice(-HISTORY_LIMIT), { project: projRef.current, cur: curRef.current, at: currentAt.current }];
     future.current = [];
+    currentAt.current = Date.now();
     setHistVersion((v) => v + 1);
   }, []);
 
@@ -220,6 +234,21 @@ export function useEditorState(initial: Project | null) {
         return rest;
       });
       commit({ ...p, frame, pages }, c);
+    },
+    [pushHistory, commit],
+  );
+
+  /** Change the frame size WITHOUT scaling the design — expanding or trimming the canvas. */
+  const resizeCanvas = useCallback(
+    (frame: Frame, history = true) => {
+      const p = projRef.current;
+      if (!p) return;
+      if (history) pushHistory();
+      const c = curRef.current;
+      // static designs are independent: only this one changes
+      if (!isCarousel(p) && (p.pages[c].frame || p.pages.length > 1)) {
+        commit({ ...p, pages: p.pages.map((pg, i) => (i === c ? { ...pg, frame } : pg)) }, c);
+      } else commit({ ...p, frame }, c);
     },
     [pushHistory, commit],
   );
@@ -365,9 +394,11 @@ export function useEditorState(initial: Project | null) {
       update(
         (d) => ({
           ...d,
-          elements: d.elements.map((el) =>
-            ids.includes(el.id) ? { ...el, ...(typeof patch === "function" ? patch(el) : patch) } : el,
-          ),
+          elements: d.elements.map((el) => {
+            if (!ids.includes(el.id)) return el;
+            const p = { ...(typeof patch === "function" ? patch(el) : patch) };
+            return modeRef.current === "animate" && el.keys ? autoKey(el, p, timeRef.current) : { ...el, ...p };
+          }),
         }),
         history,
       );
@@ -379,8 +410,10 @@ export function useEditorState(initial: Project | null) {
     if (!past.current.length || !projRef.current) return;
     const prev = past.current[past.current.length - 1];
     past.current = past.current.slice(0, -1);
-    future.current = [{ project: projRef.current, cur: curRef.current }, ...future.current];
+    future.current = [{ project: projRef.current, cur: curRef.current, at: currentAt.current }, ...future.current];
+    currentAt.current = prev.at;
     commit(prev.project, Math.min(prev.cur, prev.project.pages.length - 1));
+    setSelected([]);
     setHistVersion((v) => v + 1);
   }, [commit]);
 
@@ -388,10 +421,54 @@ export function useEditorState(initial: Project | null) {
     if (!future.current.length || !projRef.current) return;
     const next = future.current[0];
     future.current = future.current.slice(1);
-    past.current = [...past.current, { project: projRef.current, cur: curRef.current }];
+    past.current = [...past.current, { project: projRef.current, cur: curRef.current, at: currentAt.current }];
+    currentAt.current = next.at;
     commit(next.project, Math.min(next.cur, next.project.pages.length - 1));
+    setSelected([]);
     setHistVersion((v) => v + 1);
   }, [commit]);
+
+  /** Every step in order: [...past, current, ...future]. */
+  const timeline = (): Snapshot[] =>
+    projRef.current ? [...past.current, { project: projRef.current, cur: curRef.current, at: currentAt.current }, ...future.current] : [];
+
+  /** Jump straight to any step in the History panel (later steps stay available as redo). */
+  const jumpTo = useCallback(
+    (index: number) => {
+      const all = timeline();
+      const target = all[index];
+      if (!target) return;
+      past.current = all.slice(0, index);
+      future.current = all.slice(index + 1);
+      currentAt.current = target.at;
+      commit(target.project, Math.min(target.cur, target.project.pages.length - 1));
+      setSelected([]);
+      setHistVersion((v) => v + 1);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [commit],
+  );
+
+  const clearHistory = useCallback(() => {
+    past.current = [];
+    future.current = [];
+    clearSavedHistory();
+    setHistVersion((v) => v + 1);
+  }, []);
+
+  // ---------- history is saved in the browser, so undo survives a reload ----------
+  const [histLoaded, setHistLoaded] = useState(false);
+  useEffect(() => {
+    loadHistory().then((h) => {
+      if (h && projRef.current && !past.current.length) {
+        past.current = h.past.slice(-HISTORY_LIMIT);
+        future.current = h.future;
+        currentAt.current = h.currentAt || Date.now();
+        setHistVersion((v) => v + 1);
+      }
+      setHistLoaded(true);
+    });
+  }, []);
 
   // Re-measure text once web fonts finish loading so wrapping is accurate.
   useEffect(() => {
@@ -417,6 +494,12 @@ export function useEditorState(initial: Project | null) {
     }, 400);
     return () => clearTimeout(t);
   }, [project]);
+
+  useEffect(() => {
+    if (!histLoaded || !project) return;
+    const t = setTimeout(() => saveHistory(past.current, future.current, currentAt.current), 800);
+    return () => clearTimeout(t);
+  }, [project, cur, histLoaded]);
 
   const doc = useMemo(() => (project ? docOf(project, cur) : null), [project, cur]);
   const kind: PostKind = project?.kind ?? (project && project.pages.length > 1 ? "carousel" : "static");
@@ -452,6 +535,13 @@ export function useEditorState(initial: Project | null) {
     redo,
     canUndo: past.current.length > 0,
     canRedo: future.current.length > 0,
+    historySteps: timeline,
+    historyIndex: past.current.length,
+    jumpTo,
+    clearHistory,
+    tool,
+    setTool,
+    resizeCanvas,
     selected,
     setSelected,
     selectedEls,
@@ -478,4 +568,28 @@ export function useEditor(): Editor {
   const e = useContext(EditorContext);
   if (!e) throw new Error("EditorContext missing");
   return e;
+}
+
+/**
+ * After Effects "auto-key": in Animate mode, changing a property that already has keyframes
+ * writes a keyframe at the playhead instead of changing the base value.
+ */
+function autoKey(el: El, patch: Partial<El>, t: number): El {
+  let out: El = el;
+  const p = { ...patch };
+  if (el.keys?.position?.length && ("x" in p || "y" in p)) {
+    const cur = keyValue(el, "position", t)!;
+    out = setKey(out, "position", t, [p.x ?? cur[0], p.y ?? cur[1]]);
+    delete p.x;
+    delete p.y;
+  }
+  if (el.keys?.rotation?.length && "rotation" in p) {
+    out = setKey(out, "rotation", t, [p.rotation!]);
+    delete p.rotation;
+  }
+  if (el.keys?.opacity?.length && "opacity" in p) {
+    out = setKey(out, "opacity", t, [p.opacity!]);
+    delete p.opacity;
+  }
+  return { ...out, ...p };
 }

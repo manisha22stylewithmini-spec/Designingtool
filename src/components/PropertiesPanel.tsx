@@ -494,7 +494,7 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
                     <button
                       key={m}
                       title={m === "none" ? "No shape" : m}
-                      onClick={() => set({ mask: m === "none" ? undefined : m })}
+                      onClick={() => set({ mask: m === "none" ? undefined : m, maskNodes: undefined })}
                       className={cn(
                         "flex aspect-square items-center justify-center rounded-lg border",
                         active ? "border-violet-500 bg-violet-50 ring-1 ring-violet-500" : "border-zinc-200 hover:border-violet-300",
@@ -585,7 +585,100 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
         </>
       )}
 
+      {/* ---------- Vector path ---------- */}
+      {single && el.type === "path" && (
+        <Section title="Path" hint="Drawn with the pen or pencil">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("postcraft:edit-points", { detail: { id: el.id, target: "nodes" } }))}
+            className="w-full rounded-lg bg-violet-50 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+          >
+            ✒ Edit points
+          </button>
+          <Row label="Stroke">
+            <ColorPicker value={el.stroke ?? "#111111"} onChange={(c, h) => set({ stroke: c }, h)} />
+          </Row>
+          <Slider label="Width" value={el.strokeWidth ?? 0} min={0} max={80} onChange={(v, h) => set({ strokeWidth: v }, h)} />
+          <Row label="Fill">
+            {!el.fill || el.fill === "transparent" ? (
+              <button onClick={() => set({ fill: "#c4b5fd" })} className="rounded-lg border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-500 hover:bg-zinc-50">
+                No fill · add
+              </button>
+            ) : (
+              <>
+                <ColorPicker value={el.fill} onChange={(c, h) => set({ fill: c }, h)} />
+                <button onClick={() => set({ fill: "transparent" })} className="text-[11px] text-zinc-400 hover:text-zinc-700">
+                  remove
+                </button>
+              </>
+            )}
+          </Row>
+          <Toggle checked={!!el.closed} onChange={(v) => set({ closed: v })} label="Closed shape (join the ends)" />
+          <p className="text-[11px] leading-snug text-zinc-400">Tip: select this path and a photo, then right-click → Use as mask.</p>
+        </Section>
+      )}
+
+      {/* ---------- Custom mask ---------- */}
+      {single && (el.type === "image" || el.type === "video") && (
+        <Section title="Mask">
+          {el.maskNodes?.length ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("postcraft:edit-points", { detail: { id: el.id, target: "mask" } }))}
+                className="flex-1 rounded-lg bg-violet-50 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+              >
+                ✒ Edit mask points
+              </button>
+              <button onClick={() => set({ maskNodes: undefined })} className="rounded-lg bg-zinc-100 px-3 text-xs hover:bg-zinc-200">
+                Remove
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px] leading-snug text-zinc-500">
+              Pick a shape above, or draw any shape with the <b>Pen</b>, select it together with this {el.type === "video" ? "video" : "photo"}, then right-click →{" "}
+              <b>Use as mask</b>.
+            </p>
+          )}
+        </Section>
+      )}
+
       {/* ---------- Common ---------- */}
+      <Section title="Scale" hint="Grow or shrink everything together — text, borders, corners and shadow">
+        <div className="grid grid-cols-6 gap-1">
+          {[50, 75, 90, 110, 125, 200].map((k) => (
+            <button
+              key={k}
+              onClick={() => {
+                const f = k / 100;
+                const b = sel.map(bounds);
+                const cx = (Math.min(...b.map((x) => x.left)) + Math.max(...b.map((x) => x.right))) / 2;
+                const cy = (Math.min(...b.map((x) => x.top)) + Math.max(...b.map((x) => x.bottom))) / 2;
+                updateEls(ids, (e) => {
+                  const ecx = cx + (e.x + e.w / 2 - cx) * f;
+                  const ecy = cy + (e.y + e.h / 2 - cy) * f;
+                  return {
+                    w: e.w * f,
+                    h: e.h * f,
+                    x: ecx - (e.w * f) / 2,
+                    y: ecy - (e.h * f) / 2,
+                    ...(e.fontSize ? { fontSize: e.fontSize * f, letterSpacing: (e.letterSpacing ?? 0) * f } : {}),
+                    ...(e.strokeWidth ? { strokeWidth: e.strokeWidth * f } : {}),
+                    ...(e.radius ? { radius: e.radius * f } : {}),
+                    shadow: { ...e.shadow, x: e.shadow.x * f, y: e.shadow.y * f, blur: e.shadow.blur * f },
+                  };
+                });
+                notify(`Scaled to ${k}%`);
+              }}
+              className="rounded-md bg-zinc-100 py-1.5 text-[11px] font-medium text-zinc-700 hover:bg-zinc-200"
+            >
+              {k}%
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-zinc-400">
+          Or press <kbd className="rounded bg-zinc-100 px-1">K</kbd> for the Scale tool and drag any handle.
+        </p>
+      </Section>
+
       <Section title="Position">
         <div className="grid grid-cols-6 gap-1">
           {(

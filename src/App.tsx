@@ -269,6 +269,7 @@ function Workspace({ showStart, setShowStart }: { showStart: boolean; setShowSta
     if (!one) return `${selectedEls.length} items selected — drag to move them together, or line them up from the right panel.`;
     if (one.locked) return "🔒 This item is locked — unlock it from the toolbar to move or resize.";
     if (one.type === "text") return "Text selected — double-click to type · corner dots change size · try Text effects on the right · right-click to copy its style.";
+    if (one.type === "path") return "Path selected — double-click to edit its points · Stroke, fill and width are on the right · select it with a photo and right-click → Use as mask.";
     if (one.type === "video") return "Video clip selected — double-click to crop · trim and volume on the right · in Timeline press S to split at the playhead.";
     if (one.type === "image") return "Photo selected — double-click to crop & zoom · right-click for more · filters, shapes and corners are on the right.";
     return "Shape selected — drag to move · dots resize (Shift keeps proportions) · change colour and border on the right.";

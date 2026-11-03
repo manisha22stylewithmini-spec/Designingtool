@@ -3,6 +3,7 @@ import { clipTime, type AnimState } from "../lib/animation";
 import { filterCss } from "../lib/factory";
 import { layoutText, shapePath } from "../lib/geometry";
 import { resolveSrc } from "../lib/media";
+import { nodesToPath } from "../lib/vector";
 import { textEffectCss, effectParams } from "../lib/textEffects";
 import type { El } from "../types";
 
@@ -158,9 +159,30 @@ function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHov
         />
       </svg>
     );
+  } else if (el.type === "path") {
+    content = (
+      <svg
+        width={el.w}
+        height={el.h}
+        style={{
+          overflow: "visible",
+          display: "block",
+          filter: el.shadow.on ? `drop-shadow(${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur / 2}px ${el.shadow.color})` : undefined,
+        }}
+      >
+        <path
+          d={nodesToPath(el.nodes ?? [], !!el.closed, el.w, el.h)}
+          fill={el.fill && el.fill !== "transparent" ? el.fill : "none"}
+          stroke={(el.strokeWidth ?? 0) > 0 ? el.stroke : "none"}
+          strokeWidth={el.strokeWidth}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
   } else if (el.type === "image" || el.type === "video") {
     const sw = el.strokeWidth ?? 0;
-    const maskPath = el.mask ? shapePath(el.mask, el.w, el.h) : null;
+    const maskPath = el.maskNodes?.length ? nodesToPath(el.maskNodes, true, el.w, el.h) : el.mask ? shapePath(el.mask, el.w, el.h) : null;
     content = (
       <div
         style={{
@@ -192,7 +214,7 @@ function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHov
         {sw > 0 &&
           (maskPath ? (
             <svg width={el.w} height={el.h} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
-              <path d={shapePath(el.mask!, el.w, el.h, 0, sw / 2)} fill="none" stroke={el.stroke} strokeWidth={sw} strokeLinejoin="round" />
+              <path d={el.maskNodes?.length ? maskPath : shapePath(el.mask!, el.w, el.h, 0, sw / 2)} fill="none" stroke={el.stroke} strokeWidth={sw} strokeLinejoin="round" />
             </svg>
           ) : (
             <div style={{ position: "absolute", inset: 0, border: `${sw}px solid ${el.stroke}`, borderRadius: el.radius }} />

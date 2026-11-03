@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { FiCopy, FiLock, FiMaximize, FiMinimize, FiMinus, FiPlus, FiTrash2, FiUnlock } from "react-icons/fi";
 import { MdOutlineFitScreen, MdOutlinePanTool } from "react-icons/md";
 import { findPlatform, findVariant, ratioLabel } from "../data/platforms";
-import { animState, STATIC } from "../lib/animation";
+import { animState, atTime, STATIC } from "../lib/animation";
 import { bgCss } from "../lib/background";
 import { cn } from "../lib/cn";
 import { bounds } from "../lib/geometry";
@@ -12,6 +12,8 @@ import type { Doc, El, RulerGuide } from "../types";
 import { ElementView } from "./ElementView";
 import { ContextMenu, CropGhost, handleCursor, Outline, QuickBtn, Ruler, RULER_SIZE, TextEditor, ViewMenu } from "./StageParts";
 import { useActions } from "./useActions";
+import { DrawLayer, Toolbar, toolFromKey, VectorEditor } from "./CanvasTools";
+import { canMask, maskable, nodesInBox, refitPath, shapeToPath } from "../lib/pathOps";
 
 type SnapLine = { axis: "x" | "y"; pos: number };
 
@@ -30,6 +32,9 @@ export function Stage() {
   const ed = useEditor();
   const { doc, project, page: cur, kind, prefs, setPref, selected, setSelected, updateEls, checkpoint, mode, time, setHint, update, cropId, setCropId } = ed;
   const { frame } = doc;
+  const animated = mode === "animate";
+  // in Animate mode items are shown (and dragged) where their keyframes put them at the playhead
+  const els = animated ? doc.elements.map((e) => atTime(e, time)) : doc.elements;
   const carousel = kind === "carousel";
   const free = prefs.free;
   const multiPage = kind === "static" || kind === "carousel";
@@ -43,7 +48,13 @@ export function Stage() {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false); // dragging / resizing / rotating
-  const [hand, setHand] = useState(false);
+  const tool = ed.tool;
+  const hand = tool === "hand";
+  const setHand = (fn: (h: boolean) => boolean) => ed.setTool(fn(hand) ? "hand" : "select");
+  const drawing = tool === "pen" || tool === "pencil" || tool === "rect" || tool === "ellipse" || tool === "line" || tool === "text";
+  /** Element whose anchor points are being edited (a path, or a photo's mask). */
+  const [vec, setVec] = useState<{ id: string; target: "nodes" | "mask" } | null>(null);
+  const [frameDrag, setFrameDrag] = useState<{ w: number; h: number } | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [draftGuide, setDraftGuide] = useState<RulerGuide | null>(null);
@@ -146,7 +157,12 @@ export function Stage() {
         e.preventDefault();
         setSpaceDown(true);
       }
-      if (e.key.toLowerCase() === "h" && !e.metaKey && !e.ctrlKey) setHand((h) => !h);
+      const t = toolFromKey(e);
+      if (t) {
+        ed.setTool(t);
+        return;
+      }
+      if (e.key === "Escape" && ed.tool !== "select") ed.setTool("select");
       if ((e.metaKey || e.ctrlKey) && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
         zoomAt(zoom * 1.25);
@@ -172,7 +188,7 @@ export function Stage() {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, [mode, zoom, zoomAt]);
+  }, [mode, zoom, zoomAt, ed]);
   const panning = hand || spaceDown;
 
   const startPanView = (e: React.PointerEvent) => {
@@ -230,7 +246,7 @@ export function Stage() {
     }
     ids = selected.includes(el.id) ? selected : [el.id];
     setSelected(ids);
-    const movable = doc.elements.filter((x) => ids.includes(x.id) && !x.locked);
+    const movable = els.filter((x) => ids.includes(x.id) && !x.locked);
     if (!movable.length) {
       if (el.locked) setHint("This element is locked 🔒 — unlock it in the right panel to move it.");
       return;
@@ -244,7 +260,7 @@ export function Stage() {
       cx: 0,
       cy: 0,
     }));
-    const others = doc.elements.filter((x) => !ids.includes(x.id) && !x.hidden).map(bounds);
+    const others = els.filter((x) => !ids.includes(x.id) && !x.hidden).map(bounds);
     const smart = prefs.smartGuides;
     const xs = [
       ...(smart ? [0, frame.w / 2, frame.w, ...others.flatMap((o) => [o.left, o.cx, o.right])] : []),
@@ -342,9 +358,12 @@ export function Stage() {
     const sin = Math.sin(r);
     const c0 = { x: el.x + el.w / 2, y: el.y + el.h / 2 };
     const corner = hx !== 0 && hy !== 0;
+    const scaling = tool === "scale";
     const keepRatio = corner && (el.type === "image" || el.type === "video" || el.type === "text");
     setHint(
-      el.type === "text"
+      scaling
+        ? "Scale tool — the whole item grows or shrinks together: text size, borders, corners and shadow."
+        : el.type === "text"
         ? corner
           ? "Resizing text — corners make the letters bigger or smaller."
           : "Changing text box width — the text re-wraps."
@@ -362,24 +381,34 @@ export function Stage() {
       let w = el.w + hx * lx;
       let h = el.h + hy * ly;
       let s = 1;
-      if (keepRatio || (corner && ev.shiftKey)) {
+      if (scaling) {
+        // Scale tool: everything grows together, from any handle
+        s = Math.max(0.02, 1 + (corner ? (hx * lx / el.w + hy * ly / el.h) / 2 : hx ? (hx * lx) / el.w : (hy * ly) / el.h));
+        w = el.w * s;
+        h = el.h * s;
+      } else if (keepRatio || (corner && ev.shiftKey)) {
         s = Math.max(0.05, 1 + (hx * lx / el.w + hy * ly / el.h) / 2);
         w = el.w * s;
         h = el.h * s;
       }
       w = Math.max(8, w);
       h = Math.max(el.shape === "line" ? 2 : 8, h);
-      if (el.type === "text" && !corner) h = el.h;
+      if (el.type === "text" && !corner && !scaling) h = el.h;
       const sx = (hx * (w - el.w)) / 2;
       const sy = (hy * (h - el.h)) / 2;
       const ncx = c0.x + sx * cos - sy * sin;
       const ncy = c0.y + sx * sin + sy * cos;
       const patch: Partial<El> = { w, x: ncx - w / 2, y: ncy - h / 2, h };
-      if (el.type === "text" && corner) {
+      if (el.type === "text" && (corner || scaling)) {
         patch.fontSize = Math.max(4, (el.fontSize ?? 32) * s);
         patch.letterSpacing = (el.letterSpacing ?? 0) * s;
       }
-      if (el.type === "text" && !corner) patch.y = el.y;
+      if (scaling) {
+        if (el.strokeWidth) patch.strokeWidth = el.strokeWidth * s;
+        if (el.radius) patch.radius = el.radius * s;
+        patch.shadow = { ...el.shadow, x: el.shadow.x * s, y: el.shadow.y * s, blur: el.shadow.blur * s };
+      }
+      if (el.type === "text" && !corner && !scaling) patch.y = el.y;
       updateEls([el.id], patch, false);
     };
     const up = () => {
@@ -497,7 +526,38 @@ export function Stage() {
       setSelected([]);
     }
   };
+  const editPoints = (el: El, target: "nodes" | "mask" = "nodes") => {
+    if (el.locked) return;
+    if (target === "nodes" && el.type === "shape") {
+      update((d) => ({ ...d, elements: d.elements.map((x) => (x.id === el.id ? shapeToPath(x) : x)) }));
+      ed.notify("Shape turned into an editable path — drag the points");
+    }
+    setSelected([el.id]);
+    setCropId(null);
+    setVec({ id: el.id, target });
+    setHint("Editing points — drag a point or its handles · double-click a point: sharp corner ↔ smooth curve · double-click the line: add a point · Delete removes · Enter or Esc when done");
+  };
+  // the side panel can ask for point editing too
+  useEffect(() => {
+    const on = (e: Event) => {
+      const { id, target } = (e as CustomEvent<{ id: string; target: "nodes" | "mask" }>).detail;
+      const el = doc.elements.find((x) => x.id === id);
+      if (el) editPoints(el, target);
+    };
+    window.addEventListener("postcraft:edit-points", on);
+    return () => window.removeEventListener("postcraft:edit-points", on);
+  });
+  const finishPoints = () => {
+    setHint(null);
+    if (vec?.target === "nodes") update((d) => ({ ...d, elements: d.elements.map((x) => (x.id === vec.id ? refitPath(x) : x)) }), false);
+    setVec(null);
+  };
+  useEffect(() => {
+    if (vec && !selected.includes(vec.id)) finishPoints();
+  });
+
   const onDoubleClick = (el: El) => {
+    if (el.type === "path" || el.type === "shape") return editPoints(el);
     if (el.type === "text") startEditing(el);
     else if (el.type === "image" || el.type === "video") startCrop(el);
   };
@@ -569,28 +629,132 @@ export function Stage() {
     window.addEventListener("pointerup", up);
   };
 
+  // ---------- crop with handles: the photo stays put while the box changes ----------
+  const onCropHandleDown = (e: React.PointerEvent, el: El, hx: number, hy: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    checkpoint();
+    const r = natRatio(el.id);
+    const { dw, dh } = coverSize(el);
+    const imgL = el.x + (el.w - dw) * (el.cropX ?? 0.5);
+    const imgT = el.y + (el.h - dh) * (el.cropY ?? 0.5);
+    const start = { x: e.clientX, y: e.clientY };
+    const move = (ev: PointerEvent) => {
+      const dx = (ev.clientX - start.x) / zoom;
+      const dy = (ev.clientY - start.y) / zoom;
+      let x0 = el.x,
+        y0 = el.y,
+        x1 = el.x + el.w,
+        y1 = el.y + el.h;
+      if (hx < 0) x0 = Math.min(x1 - 10, Math.max(imgL, el.x + dx));
+      if (hx > 0) x1 = Math.max(x0 + 10, Math.min(imgL + dw, el.x + el.w + dx));
+      if (hy < 0) y0 = Math.min(y1 - 10, Math.max(imgT, el.y + dy));
+      if (hy > 0) y1 = Math.max(y0 + 10, Math.min(imgT + dh, el.y + el.h + dy));
+      const w = x1 - x0;
+      const h = y1 - y0;
+      const zoomNew = dh / Math.max(w / r, h);
+      updateEls(
+        [el.id],
+        {
+          x: x0,
+          y: y0,
+          w,
+          h,
+          cropZoom: Math.max(1, zoomNew),
+          cropX: Math.abs(w - dw) > 0.5 ? Math.max(0, Math.min(1, (imgL - x0) / (w - dw))) : 0.5,
+          cropY: Math.abs(h - dh) > 0.5 ? Math.max(0, Math.min(1, (imgT - y0) / (h - dh))) : 0.5,
+        },
+        false,
+      );
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  // ---------- expand / trim the canvas by dragging its edges ----------
+  const onFrameHandleDown = (e: React.PointerEvent, hx: number, hy: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    checkpoint();
+    if (zoomMode === "fit") setZoomMode(zoom); // keep the view steady while the frame grows
+    const start = { x: e.clientX, y: e.clientY, w: frame.w, h: frame.h };
+    const move = (ev: PointerEvent) => {
+      let w = hx ? Math.round(start.w + (ev.clientX - start.x) / zoom) : start.w;
+      let h = hy ? Math.round(start.h + (ev.clientY - start.y) / zoom) : start.h;
+      if (ev.shiftKey && hx && hy) {
+        const s = Math.max(w / start.w, h / start.h);
+        w = Math.round(start.w * s);
+        h = Math.round(start.h * s);
+      }
+      w = Math.max(50, Math.min(6000, w));
+      h = Math.max(50, Math.min(6000, h));
+      setFrameDrag({ w, h });
+      ed.resizeCanvas({ platformId: "custom", variantId: "custom", w, h }, false);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setFrameDrag(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  // ---------- masking: a shape / closed path cuts a photo or video ----------
+  const selEls = els.filter((e) => selected.includes(e.id));
+  const maskPair = (() => {
+    if (selEls.length !== 2) return null;
+    const m = selEls.find(canMask);
+    const t = selEls.find(maskable);
+    return m && t && m.id !== t.id ? { m, t } : null;
+  })();
+  const useAsMask = () => {
+    if (!maskPair) return;
+    const nodes = nodesInBox(maskPair.m, maskPair.t);
+    if (!nodes) return;
+    update((d) => ({
+      ...d,
+      elements: d.elements.filter((e) => e.id !== maskPair.m.id).map((e) => (e.id === maskPair.t.id ? { ...e, maskNodes: nodes, mask: undefined } : e)),
+    }));
+    setSelected([maskPair.t.id]);
+    ed.notify("Masked — the photo now only shows inside the shape. Right-click → Edit mask points to reshape it");
+  };
+
+  // ---------- drawing tools ----------
+  const onCreate = (el: El, opts: { edit?: boolean; keepTool?: boolean } = {}) => {
+    update((d) => ({ ...d, elements: [...d.elements, el] }));
+    setSelected([el.id]);
+    if (!opts.keepTool) ed.setTool("select");
+    if (opts.edit) setEditingId(el.id);
+    else if (el.type === "path") ed.notify(`${el.name} added — double-click it to edit its points`);
+  };
+
   // ---------- derived ----------
   const variant = findVariant(frame.platformId, frame.variantId);
   const platform = findPlatform(frame.platformId);
   const PIcon = platform.icon;
-  const single = selected.length === 1 ? doc.elements.find((e) => e.id === selected[0]) : undefined;
+  const single = selected.length === 1 ? els.find((e) => e.id === selected[0]) : undefined;
   const editingEl = editingId ? doc.elements.find((e) => e.id === editingId) : undefined;
-  const cropEl = cropId ? doc.elements.find((e) => e.id === cropId) : undefined;
-  const animated = mode === "animate";
+  const cropEl = cropId ? els.find((e) => e.id === cropId) : undefined;
+  const vecEl = vec ? els.find((e) => e.id === vec.id) : undefined;
   const margin = (Math.min(frame.w, frame.h) * prefs.marginPct) / 100;
   const docs = visible.map((i) => (i === cur ? doc : docOf(project, i)));
   const act = screenOf(cur);
 
   const selBox = (() => {
-    const els = doc.elements.filter((e) => selected.includes(e.id));
-    if (!els.length || editingId) return null;
-    const b = els.map(bounds);
+    const sels = els.filter((e) => selected.includes(e.id));
+    if (!sels.length || editingId) return null;
+    const b = sels.map(bounds);
     return {
       left: Math.min(...b.map((x) => x.left)),
       top: Math.min(...b.map((x) => x.top)),
       right: Math.max(...b.map((x) => x.right)),
       bottom: Math.max(...b.map((x) => x.bottom)),
-      locked: els.every((e) => e.locked),
+      locked: sels.every((e) => e.locked),
     };
   })();
 
@@ -703,6 +867,7 @@ export function Stage() {
       </div>
 
       <div className="relative flex min-h-0 flex-1">
+        <Toolbar tool={tool} setTool={ed.setTool} prefs={prefs} setPref={setPref} />
         {prefs.rulers && (
           <>
             <div className="absolute top-0 left-0 z-20 border-r border-b border-zinc-200 bg-zinc-50" style={{ width: RULER_SIZE, height: RULER_SIZE }} />
@@ -742,8 +907,8 @@ export function Stage() {
                     .map((el) => (
                       <ElementView
                         key={el.id}
-                        el={el}
-                        st={animated && i === cur ? animState(el, time, frames[i]) : STATIC}
+                        el={animated && i === cur ? atTime(el, time) : el}
+                        st={animated && i === cur ? animState(atTime(el, time), time, frames[i]) : STATIC}
                         editing={i === cur && el.id === editingId}
                         onPointerDown={handlerFor(i)}
                         onDoubleClick={i === cur ? onDoubleClick : undefined}
@@ -774,8 +939,8 @@ export function Stage() {
                 {docs[k].elements.map((el) => (
                   <ElementView
                     key={el.id}
-                    el={el}
-                    st={animated && i === cur ? animState(el, time, frames[i]) : STATIC}
+                    el={animated && i === cur ? atTime(el, time) : el}
+                    st={animated && i === cur ? animState(atTime(el, time), time, frames[i]) : STATIC}
                     editing={i === cur && el.id === editingId}
                     onPointerDown={handlerFor(i)}
                     onDoubleClick={i === cur ? onDoubleClick : undefined}
@@ -874,13 +1039,13 @@ export function Stage() {
                 ),
               )}
               {hoverId && !selected.includes(hoverId) && !busy && (
-                <Outline el={doc.elements.find((e) => e.id === hoverId)} zoom={zoom} className="border-violet-400/70" />
+                <Outline el={els.find((e) => e.id === hoverId)} zoom={zoom} className="border-violet-400/70" />
               )}
-              {doc.elements
-                .filter((e) => selected.includes(e.id))
+              {els
+                .filter((e) => selected.includes(e.id) && e.id !== vec?.id)
                 .map((el) => (
                   <Outline key={el.id} el={el} zoom={zoom} className={el.locked ? "border-dashed border-zinc-500" : "border-violet-600"}>
-                    {single && single.id === el.id && !el.locked && editingId !== el.id && cropId !== el.id && !panning && (
+                    {single && single.id === el.id && !el.locked && editingId !== el.id && cropId !== el.id && !panning && !drawing && (
                       <>
                         {HANDLES.filter(([hx, hy]) => {
                           if (el.type === "text") return hy === 0 || hx !== 0;
@@ -912,6 +1077,80 @@ export function Stage() {
                 ))}
 
               {cropEl && <CropGhost el={cropEl} zoom={zoom} size={coverSize(cropEl)} />}
+              {cropEl &&
+                HANDLES.map(([hx, hy]) => (
+                  <div
+                    key={"c" + hx + hy}
+                    onPointerDown={(e) => onCropHandleDown(e, cropEl, hx, hy)}
+                    className="pointer-events-auto absolute z-10 border-2 border-white bg-zinc-900 shadow"
+                    style={{
+                      left: (cropEl.x + ((hx + 1) / 2) * cropEl.w) * zoom,
+                      top: (cropEl.y + ((hy + 1) / 2) * cropEl.h) * zoom,
+                      width: hx && hy ? 12 : hx ? 6 : 20,
+                      height: hx && hy ? 12 : hy ? 6 : 20,
+                      transform: "translate(-50%,-50%)",
+                      cursor: handleCursor(hx, hy, 0),
+                    }}
+                    title="Drag to crop — the photo stays where it is"
+                  />
+                ))}
+              {vecEl && (
+                <VectorEditor
+                  el={vecEl}
+                  nodes={(vec!.target === "mask" ? vecEl.maskNodes : vecEl.nodes) ?? []}
+                  closed={vec!.target === "mask" ? true : !!vecEl.closed}
+                  zoom={zoom}
+                  label={vec!.target === "mask" ? "Editing mask" : "Editing points"}
+                  onCheckpoint={checkpoint}
+                  onChange={(nodes) => updateEls([vecEl.id], vec!.target === "mask" ? { maskNodes: nodes } : { nodes }, false)}
+                  onDone={finishPoints}
+                />
+              )}
+              {mode === "design" && tool === "select" && !cropEl && !vecEl && !editingId && (
+                <>
+                  {(
+                    [
+                      [1, 0],
+                      [0, 1],
+                      [1, 1],
+                    ] as const
+                  ).map(([hx, hy]) => (
+                    <div
+                      key={"f" + hx + hy}
+                      onPointerDown={(e) => onFrameHandleDown(e, hx, hy)}
+                      title="Drag to expand or trim the canvas (the design doesn't stretch). Shift keeps the shape."
+                      className="pointer-events-auto absolute z-10 opacity-0 transition hover:opacity-100"
+                      style={{
+                        left: hx ? "100%" : 0,
+                        top: hy ? "100%" : 0,
+                        width: hx && hy ? 16 : hx ? 10 : "100%",
+                        height: hx && hy ? 16 : hy ? 10 : "100%",
+                        transform: hx && hy ? "translate(-50%,-50%)" : hx ? "translateX(-50%)" : "translateY(-50%)",
+                        cursor: hx && hy ? "nwse-resize" : hx ? "ew-resize" : "ns-resize",
+                      }}
+                    >
+                      <div className={cn("absolute bg-sky-500", hx && hy ? "inset-1 rounded-sm" : hx ? "inset-y-0 left-1/2 w-0.5" : "inset-x-0 top-1/2 h-0.5")} />
+                    </div>
+                  ))}
+                </>
+              )}
+              {frameDrag && (
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 rounded-md bg-sky-600 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-white">
+                  {frameDrag.w} × {frameDrag.h} px
+                </div>
+              )}
+              {drawing && (
+                <DrawLayer
+                  tool={tool}
+                  zoom={zoom}
+                  frame={frame}
+                  duration={doc.duration}
+                  prefs={prefs}
+                  toFrame={toFrame}
+                  onCreate={onCreate}
+                  onDone={() => ed.setTool("select")}
+                />
+              )}
               {cropEl && selBox && (
                 <div
                   className="pointer-events-auto absolute z-20 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-zinc-200 bg-white py-1 pr-1 pl-3 text-xs whitespace-nowrap shadow-lg"
@@ -939,7 +1178,7 @@ export function Stage() {
                 </div>
               )}
 
-              {selBox && !busy && !cropEl && !panning && (
+              {selBox && !busy && !cropEl && !panning && !vecEl && !drawing && (
                 <div
                   className="pointer-events-auto absolute z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg"
                   style={{ left: ((selBox.left + selBox.right) / 2) * zoom, top: Math.max(-44, selBox.top * zoom - 52) }}
@@ -981,6 +1220,13 @@ export function Stage() {
                   ...(single?.type === "text" ? [{ label: "Edit text", key: "Double-click", run: () => startEditing(single) }] : []),
                   ...(single && (single.type === "image" || single.type === "video") ? [{ label: "Crop & zoom", key: "Double-click", run: () => startCrop(single) }] : []),
                   ...(single?.type === "video" && animated ? [{ label: "Split clip at playhead", key: "S", run: actions.splitClip, disabled: !actions.canSplit() }] : []),
+                  ...(single && (single.type === "path" || single.type === "shape") ? [{ label: "Edit points", key: "Double-click", run: () => editPoints(single) }] : []),
+                  ...(maskPair ? [{ label: `Use ${maskPair.m.name} as mask`, run: useAsMask }] : []),
+                  ...(single && maskable(single) && single.maskNodes?.length ? [{ label: "Edit mask points", run: () => editPoints(single, "mask") }] : []),
+                  ...(single && maskable(single) && (single.maskNodes?.length || single.mask)
+                    ? [{ label: "Remove mask", run: () => updateEls([single.id], { mask: undefined, maskNodes: undefined }) }]
+                    : []),
+                  "-" as const,
                   { label: "Copy", key: "⌘C", run: actions.copy },
                   { label: "Paste", key: "⌘V", run: actions.paste, disabled: !actions.hasClipboard() },
                   { label: "Duplicate", key: "⌘D", run: actions.duplicate },
