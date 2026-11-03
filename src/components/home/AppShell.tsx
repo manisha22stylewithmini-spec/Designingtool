@@ -8,6 +8,7 @@ import { formatDay } from "../../lib/library";
 import { useLibrary } from "../../libraryStore";
 import { useUser } from "../../userContext";
 import { Logo } from "../TopBar";
+import { CreatorLink } from "../CreatorLink";
 import { IDEAS } from "./TemplatePreview";
 
 export function Avatar({ size = 36 }: { size?: number }) {
@@ -230,6 +231,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: "h
         </header>
         <div className="thin-scroll min-h-0 flex-1 overflow-y-auto">{children}</div>
       </div>
+      <CreatorLink />
     </div>
   );
 }

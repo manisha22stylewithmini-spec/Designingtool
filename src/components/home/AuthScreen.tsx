@@ -3,6 +3,8 @@ import { FiArrowRight, FiEye, FiEyeOff, FiLock, FiMail, FiUser } from "react-ico
 import { authConfigured, authMessage, resetPassword, signInWithEmail, signInWithGoogle, signUpWithEmail } from "../../lib/auth";
 import { cn } from "../../lib/cn";
 import { Logo } from "../TopBar";
+import { BRAND } from "../../data/brand";
+import { CreatorLink } from "../CreatorLink";
 import { TemplatePreview } from "./TemplatePreview";
 
 function GoogleIcon() {
@@ -178,8 +180,9 @@ export function AuthScreen() {
             </button>
           </p>
         </div>
-        <p className="text-[11px] text-zinc-400">By continuing you agree to use PostCraft responsibly.</p>
+        <p className="text-[11px] text-zinc-400">Delulu Craft — designed & built by Manisha Baroliya.</p>
       </div>
+      <CreatorLink />
 
       {/* showcase */}
       <div className="relative hidden flex-1 overflow-hidden bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-400 lg:block">
@@ -189,7 +192,8 @@ export function AuthScreen() {
             <TemplatePreview templateId={s.t} frame={s.frame} className="h-full w-full" rounded={18} />
           </div>
         ))}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/40 to-transparent p-10 pt-24 text-white">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-10 pt-24 text-white">
+          <img src={BRAND.pill} alt={`${BRAND.name} ${BRAND.by}`} className="mb-4 h-28 w-auto drop-shadow-2xl" />
           <p className="text-xs font-semibold tracking-[0.25em] text-white/70 uppercase">Design · Animate · Publish</p>
           <p className="mt-2 max-w-md text-3xl leading-tight font-black">Every post for every brand — planned by date, ready for every platform.</p>
         </div>

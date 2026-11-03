@@ -17,6 +17,7 @@ import { EditorCrumbs } from "./components/library/EditorCrumbs";
 import { getProject, switchAccountLibrary } from "./lib/library";
 import { watchUser, type User } from "./lib/auth";
 import { UserContext } from "./userContext";
+import { CreatorLink } from "./components/CreatorLink";
 import { AuthScreen } from "./components/home/AuthScreen";
 import { AppShell } from "./components/home/AppShell";
 import { HomeScreen } from "./components/home/HomeScreen";
@@ -44,7 +45,7 @@ export default function App() {
     switchAccountLibrary(user.uid).then(() => setLibFor(user.uid));
   }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (user === undefined) return <Splash text="Starting PostCraft…" />;
+  if (user === undefined) return <Splash text="Starting Delulu Craft…" />;
   if (!user) return <AuthScreen />;
   if (libFor !== user.uid) return <Splash text="Opening your library…" />;
   return (
@@ -336,6 +337,7 @@ function Workspace({ creativeId }: { creativeId: string }) {
       <footer className="flex h-8 shrink-0 items-center gap-3 border-t border-zinc-200 bg-white px-4 text-[11px] text-zinc-500">
         <span className={mode === "animate" ? "h-2 w-2 rounded-full bg-violet-500" : "h-2 w-2 rounded-full bg-emerald-500"} />
         <span className="min-w-0 flex-1 truncate">{status}</span>
+        <CreatorLink inline />
         <span>{doc.elements.length} items</span>
         <span className="flex items-center gap-1 text-emerald-600">
           <FiCheck /> Saved in this browser

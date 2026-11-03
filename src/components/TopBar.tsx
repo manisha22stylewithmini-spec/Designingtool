@@ -3,18 +3,20 @@ import { FiCornerUpLeft, FiCornerUpRight, FiDownload, FiFilePlus } from "react-i
 import { MdOutlineAnimation, MdOutlineBrush } from "react-icons/md";
 import { isMotion, POST_KINDS } from "../data/postKinds";
 import { cn } from "../lib/cn";
+import { BRAND } from "../data/brand";
 import type { PostKind } from "../types";
 import { useEditor } from "../store";
 import { IconBtn } from "./ui";
 
-export function Logo({ compact }: { compact?: boolean }) {
+export function Logo({ compact, onDark }: { compact?: boolean; onDark?: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-sm font-black text-white shadow">
-        P
-      </div>
-      <span className={cn("text-[15px] font-bold tracking-tight text-zinc-900", compact && "hidden 2xl:inline")}>
-        Post<span className="text-violet-600">Craft</span>
+    <div className="flex shrink-0 items-center gap-2.5" title={`${BRAND.name} ${BRAND.by}`}>
+      <img src={BRAND.mark} alt={BRAND.name} className="h-9 w-9 shrink-0 rounded-full shadow-md ring-2 ring-white" />
+      <span className={cn("leading-none", compact && "hidden 2xl:block")}>
+        <span className={cn("block text-[15px] font-black tracking-tight", onDark ? "text-white" : "text-zinc-900")}>
+          Delulu<span className="bg-gradient-to-r from-violet-600 via-pink-500 to-amber-500 bg-clip-text text-transparent"> Craft</span>
+        </span>
+        <span className={cn("mt-0.5 block text-[10px] font-medium", onDark ? "text-white/60" : "text-zinc-400")}>{BRAND.by}</span>
       </span>
     </div>
   );
