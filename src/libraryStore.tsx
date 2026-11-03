@@ -20,6 +20,8 @@ import type { Project } from "./types";
 // ---------- route (kept in the address bar so the browser's Back button works) ----------
 
 export interface Route {
+  /** top-level page: home dashboard, templates gallery, or (default) the library */
+  view?: "home" | "templates";
   brandId?: string;
   date?: string;
   platform?: string;
@@ -29,6 +31,9 @@ export interface Route {
 
 export function parseHash(h = location.hash): Route {
   const parts = h.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  if (!parts.length) return { view: "home" };
+  if (parts[0] === "templates") return { view: "templates" };
+  if (parts[0] === "library") parts.shift();
   const r: Route = {};
   for (let i = 0; i < parts.length; i += 2) {
     const v = parts[i + 1];
@@ -44,7 +49,9 @@ export function parseHash(h = location.hash): Route {
 
 export function toHash(r: Route): string {
   if (r.edit) return `#/edit/${encodeURIComponent(r.edit)}`;
-  let h = "#/";
+  if (r.view === "home") return "#/";
+  if (r.view === "templates") return "#/templates";
+  let h = "#/library/";
   if (r.brandId) h += `b/${encodeURIComponent(r.brandId)}/`;
   if (r.brandId && r.date) h += `d/${r.date}/`;
   if (r.brandId && r.date && r.platform) h += `p/${encodeURIComponent(r.platform)}/`;

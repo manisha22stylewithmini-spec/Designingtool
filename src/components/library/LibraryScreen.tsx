@@ -8,7 +8,6 @@ import { starterProject } from "../../lib/starter";
 import { useLibrary, type Route } from "../../libraryStore";
 import type { PostKind } from "../../types";
 import { StartScreen } from "../StartScreen";
-import { Logo } from "../TopBar";
 import { BrandKitModal } from "./BrandKit";
 
 const platformName = (id: string) => (id === "custom" ? "Custom size" : findPlatform(id).name);
@@ -50,14 +49,13 @@ function Hierarchy({ route, brand }: { route: Route; brand?: Brand }) {
     { label: "Type", value: route.kind ? kindLabel(route.kind as PostKind) : undefined, to: { brandId: route.brandId, date: route.date, platform: route.platform } },
     { label: "Creatives", to: route },
   ];
-  const up: Route | null = level === 0 ? null : crumbs[level - 1].to;
+  const up: Route = level === 0 ? { view: "home" } : crumbs[level - 1].to;
   return (
     <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-6 py-3">
       <button
-        onClick={() => up && go(up)}
-        disabled={!up}
+        onClick={() => go(up)}
         className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-30"
-        title="Back one level"
+        title={level === 0 ? "Back to Home" : "Back one level"}
       >
         <FiArrowLeft /> Back
       </button>
@@ -178,8 +176,7 @@ export function LibraryScreen() {
   return (
     <div className="flex h-full flex-col bg-zinc-50">
       <header className="flex h-14 shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-6">
-        <Logo />
-        <span className="text-sm font-medium text-zinc-400">Library</span>
+        <span className="text-sm font-semibold text-zinc-900">Library</span>
         <div className="ml-auto">
           <NewButton onClick={() => setNewFor({ brandId: route.brandId ?? brands[0]?.id, date: route.date, platform: route.platform, kind: route.kind })} />
         </div>

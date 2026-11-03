@@ -39,13 +39,16 @@ export interface CreativeMeta {
   updatedAt: number;
 }
 
-const DB = "postcraft-library";
+const LEGACY_DB = "postcraft-library";
+let migrating: Promise<void> | null = null;
+/** Each account has its own library in this browser. */
+let DB = LEGACY_DB;
 type StoreName = "brands" | "creatives" | "projects";
 
 let dbp: Promise<IDBDatabase> | null = null;
-function open(): Promise<IDBDatabase> {
-  dbp ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
+function openDb(name: string): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, 1);
     req.onupgradeneeded = () => {
       const db = req.result;
       db.createObjectStore("brands", { keyPath: "id" });
@@ -55,7 +58,56 @@ function open(): Promise<IDBDatabase> {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+}
+function open(): Promise<IDBDatabase> {
+  dbp ??= openDb(DB);
   return dbp;
+}
+
+const CLAIM_KEY = "postcraft-library-claimed-by";
+
+/**
+ * Switch to the library of the signed-in account. The first account to sign in on this browser
+ * takes over the designs that were made before accounts existed.
+ */
+export async function switchAccountLibrary(uid: string): Promise<void> {
+  const name = uid === "local" ? LEGACY_DB : `${LEGACY_DB}-${uid}`;
+  if (name === DB && dbp) return;
+  DB = name;
+  dbp = null;
+  migrating = null;
+  if (uid === "local") return;
+  let claimed: string | null = null;
+  try {
+    claimed = localStorage.getItem(CLAIM_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (claimed) return;
+  try {
+    localStorage.setItem(CLAIM_KEY, uid);
+  } catch {
+    /* ignore */
+  }
+  // copy everything from the old shared library into this account's library
+  const legacy = await openDb(LEGACY_DB);
+  const read = <T>(store: StoreName) =>
+    new Promise<{ key: IDBValidKey; value: T }[]>((resolve) => {
+      const out: { key: IDBValidKey; value: T }[] = [];
+      const req = legacy.transaction(store).objectStore(store).openCursor();
+      req.onsuccess = () => {
+        const c = req.result;
+        if (!c) return resolve(out);
+        out.push({ key: c.key, value: c.value as T });
+        c.continue();
+      };
+      req.onerror = () => resolve(out);
+    });
+  const [brands, creatives, projects] = await Promise.all([read<Brand>("brands"), read<CreativeMeta>("creatives"), read<Project>("projects")]);
+  legacy.close();
+  for (const b of brands) await putItem("brands", b.value);
+  for (const c of creatives) await putItem("creatives", c.value);
+  for (const p of projects) await putProject(String(p.key), p.value);
 }
 
 function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T> | void): Promise<T> {
@@ -100,7 +152,6 @@ export function metaFromProject(base: Omit<CreativeMeta, "platformId" | "variant
 }
 
 /** First run after the library was added: move the single saved design into a starter brand. */
-let migrating: Promise<void> | null = null;
 export function migrateOldDesign(): Promise<void> {
   // only ever once per page load (React may start effects twice)
   migrating ??= runMigration();

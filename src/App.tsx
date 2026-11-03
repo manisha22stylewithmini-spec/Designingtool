@@ -14,19 +14,57 @@ import { EditorContext, prepareProject, useEditor, useEditorState, type Editor }
 import { LibraryContext, useLibrary, useLibraryState } from "./libraryStore";
 import { LibraryScreen, NewCreativeDialog } from "./components/library/LibraryScreen";
 import { EditorCrumbs } from "./components/library/EditorCrumbs";
-import { getProject } from "./lib/library";
+import { getProject, switchAccountLibrary } from "./lib/library";
+import { watchUser, type User } from "./lib/auth";
+import { UserContext } from "./userContext";
+import { AuthScreen } from "./components/home/AuthScreen";
+import { AppShell } from "./components/home/AppShell";
+import { HomeScreen } from "./components/home/HomeScreen";
+import { TemplatesScreen } from "./components/home/TemplatesScreen";
 import { PageStrip } from "./components/PageStrip";
 import { restoreMedia } from "./lib/media";
 import type { PostKind, Project } from "./types";
 
 
 
+const Splash = ({ text }: { text: string }) => (
+  <div className="flex h-full flex-col items-center justify-center gap-3 bg-zinc-50 text-sm text-zinc-500">
+    <span className="h-8 w-8 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
+    {text}
+  </div>
+);
+
 export default function App() {
+  // undefined = still checking who is signed in
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [libFor, setLibFor] = useState<string | null>(null);
+  useEffect(() => watchUser(setUser), []);
+  useEffect(() => {
+    if (!user) return setLibFor(null);
+    switchAccountLibrary(user.uid).then(() => setLibFor(user.uid));
+  }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (user === undefined) return <Splash text="Starting PostCraft…" />;
+  if (!user) return <AuthScreen />;
+  if (libFor !== user.uid) return <Splash text="Opening your library…" />;
+  return (
+    <UserContext.Provider value={user}>
+      <Signedin key={user.uid} />
+    </UserContext.Provider>
+  );
+}
+
+function Signedin() {
   const lib = useLibraryState();
-  if (!lib.ready) return <div className="flex h-full items-center justify-center text-sm text-zinc-500">Opening your library…</div>;
+  if (!lib.ready) return <Splash text="Opening your library…" />;
+  const r = lib.route;
   return (
     <LibraryContext.Provider value={lib}>
-      {lib.route.edit ? <EditorHost key={lib.route.edit} id={lib.route.edit} /> : <LibraryScreen />}
+      {r.edit ? (
+        <EditorHost key={r.edit} id={r.edit} />
+      ) : (
+        <AppShell active={r.view ?? "library"}>{r.view === "home" ? <HomeScreen /> : r.view === "templates" ? <TemplatesScreen /> : <LibraryScreen />}</AppShell>
+      )}
     </LibraryContext.Provider>
   );
 }
