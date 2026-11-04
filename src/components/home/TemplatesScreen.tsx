@@ -12,12 +12,18 @@ const FORMATS: { id: string; label: string; frame: Frame; kind: PostKind }[] = [
   { id: "story", label: "Story / Reel", frame: { platformId: "instagram", variantId: "story", w: 1080, h: 1920 }, kind: "animated" },
   { id: "linkedin", label: "LinkedIn Post", frame: { platformId: "linkedin", variantId: "post", w: 1200, h: 627 }, kind: "static" },
   { id: "thumb", label: "YouTube Thumbnail", frame: { platformId: "youtube", variantId: "thumb", w: 1280, h: 720 }, kind: "static" },
+  { id: "square-li", label: "Square 1:1", frame: { platformId: "linkedin", variantId: "square", w: 1200, h: 1200 }, kind: "static" },
+  { id: "pin", label: "Pinterest Pin", frame: { platformId: "pinterest", variantId: "standard", w: 1000, h: 1500 }, kind: "static" },
+  { id: "fb", label: "Facebook Post", frame: { platformId: "facebook", variantId: "post", w: 1200, h: 630 }, kind: "static" },
+  { id: "x", label: "X Post", frame: { platformId: "x", variantId: "post", w: 1600, h: 900 }, kind: "static" },
 ];
 
 /** Every template, shown live in the format you pick — click to start a design from it. */
 export function TemplatesScreen() {
   const lib = useLibrary();
   const [fmt, setFmt] = useState(FORMATS[0]);
+  const [group, setGroup] = useState<"all" | "photo" | "classic">("all");
+  const shown = TEMPLATES.filter((t) => group === "all" || (group === "photo") === (t.group === "photo"));
   const use = async (templateId: string, name: string) => {
     const latest = [...lib.creatives].sort((a, b) => b.updatedAt - a.updatedAt)[0];
     let bid = latest?.brandId ?? lib.brands[0]?.id;
@@ -41,8 +47,16 @@ export function TemplatesScreen() {
           </button>
         ))}
       </div>
+      <div className="mt-3 flex gap-2">
+        {([["all", "All"], ["photo", "Photo templates"], ["classic", "Classic"]] as const).map(([id, label]) => (
+          <button key={id} onClick={() => setGroup(id)} className={cn("rounded-full px-3 py-1 text-xs font-semibold transition", group === id ? "bg-violet-100 text-violet-800" : "text-zinc-500 hover:bg-zinc-100")}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-zinc-500">Every layer — photo, text, panels — is editable, and you can switch any design to another size later from the Size panel.</p>
       <div className={cn("mt-6 grid gap-5", tall ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
-        {TEMPLATES.map((t) => (
+        {shown.map((t) => (
           <button key={t.id} onClick={() => use(t.id, t.name)} className="group text-left">
             <div className="rounded-3xl border border-zinc-200/70 bg-white/70 p-3 shadow-sm transition group-hover:-translate-y-1 group-hover:shadow-xl" style={{ aspectRatio: tall ? "9/14" : "4/3" }}>
               <TemplatePreview templateId={t.id} frame={fmt.frame} className="h-full w-full" />

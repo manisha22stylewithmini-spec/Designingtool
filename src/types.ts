@@ -136,6 +136,7 @@ export interface El {
   saturation?: number; // %
   blur?: number; // px
   grayscale?: number; // %
+  pin?: number; // aspect ratio of the photo this layer is stuck to — it keeps its spot on the photo when the size changes
   cropX?: number; // 0..1 which part of the photo shows when it's cropped (0.5 = centre)
   cropY?: number;
   cropZoom?: number; // >= 1

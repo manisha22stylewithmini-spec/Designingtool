@@ -160,13 +160,35 @@ export function fitFrame(frame: Frame, ratio: number) {
 export function resizeElements<T extends { elements: El[] }>(page: T, from: Frame, frame: Frame): T {
   const sx = frame.w / from.w;
   const sy = frame.h / from.h;
-  const s = Math.min(sx, sy);
+  // where a photo that covers a frame of this shape sits (in frame pixels)
+  const cover = (fr: { w: number; h: number }, ratio: number) => {
+    const pw = Math.max(fr.w, fr.h * ratio);
+    const ph = pw / ratio;
+    return { pw, ph, ox: (fr.w - pw) / 2, oy: (fr.h - ph) / 2 };
+  };
   const elements = page.elements.map((el) => {
-    const cx = (el.x + el.w / 2) * sx;
-    const cy = (el.y + el.h / 2) * sy;
+    let s = Math.min(sx, sy);
+    let cx = (el.x + el.w / 2) * sx;
+    let cy = (el.y + el.h / 2) * sy;
+    if (el.pin) {
+      // stuck to the photo: keep the same spot on the photo, scaled with it
+      const a = cover(from, el.pin);
+      const b = cover(frame, el.pin);
+      s = b.pw / a.pw;
+      cx = b.ox + ((el.x + el.w / 2 - a.ox) / a.pw) * b.pw;
+      cy = b.oy + ((el.y + el.h / 2 - a.oy) / a.ph) * b.ph;
+    }
     const w = el.w * s;
     const h = el.h * s;
     const next: El = { ...el, w, h, x: cx - w / 2, y: cy - h / 2 };
+    // photos and panels that span the frame keep spanning it (a background photo must still cover the new size)
+    const wide = el.w >= from.w * 0.99;
+    const tall = el.h >= from.h * 0.99;
+    if (el.type === "video" && wide && tall) Object.assign(next, coverFrame(frame, el.w / el.h));
+    else if (!el.pin && (el.type === "image" || el.type === "shape") && (wide || tall)) {
+      if (wide) Object.assign(next, { x: 0, w: frame.w });
+      if (tall) Object.assign(next, { y: 0, h: frame.h });
+    }
     if (el.fontSize) next.fontSize = el.fontSize * s;
     if (el.strokeWidth) next.strokeWidth = el.strokeWidth * s;
     if (el.radius) next.radius = el.radius * s;
