@@ -9,6 +9,7 @@ import { Timeline } from "./components/Timeline";
 import { TopBar } from "./components/TopBar";
 import { isMotion } from "./data/postKinds";
 import { useActions } from "./components/useActions";
+import { useClipboard } from "./components/useClipboard";
 import { ensureFont } from "./data/fonts";
 import { EditorContext, prepareProject, useEditor, useEditorState, type Editor } from "./store";
 import { LibraryContext, useLibrary, useLibraryState } from "./libraryStore";
@@ -183,6 +184,7 @@ function Workspace({ creativeId }: { creativeId: string }) {
   }, [toast]);
 
   // ---- keyboard shortcuts ----
+  useClipboard();
   const actions = useActions();
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
@@ -216,11 +218,7 @@ function Workspace({ creativeId }: { creativeId: string }) {
         else act.pasteStyle();
         return;
       }
-      if (mod && key === "c") return act.copy();
-      if (mod && key === "v") {
-        e.preventDefault();
-        return act.paste();
-      }
+      // ⌘C / ⌘X / ⌘V are handled by the real copy / cut / paste events (useClipboard)
       if (mod && key === "d") {
         e.preventDefault();
         return act.duplicate();

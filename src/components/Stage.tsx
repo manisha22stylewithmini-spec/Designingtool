@@ -1227,6 +1227,7 @@ export function Stage() {
                     ? [{ label: "Remove mask", run: () => updateEls([single.id], { mask: undefined, maskNodes: undefined }) }]
                     : []),
                   "-" as const,
+                  { label: "Cut", key: "⌘X", run: actions.cut },
                   { label: "Copy", key: "⌘C", run: actions.copy },
                   { label: "Paste", key: "⌘V", run: actions.paste, disabled: !actions.hasClipboard() },
                   { label: "Duplicate", key: "⌘D", run: actions.duplicate },

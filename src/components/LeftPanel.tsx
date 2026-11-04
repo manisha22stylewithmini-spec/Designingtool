@@ -8,7 +8,7 @@ import { TEMPLATES } from "../data/templates";
 import { cn } from "../lib/cn";
 import { makeImage, makeShape, makeVideo } from "../lib/factory";
 import { shapePath } from "../lib/geometry";
-import { fileToDataUrl, imageSize } from "../lib/images";
+import { fileToDataUrl, imageSize, videoInfo } from "../lib/images";
 import { putMedia, resolveSrc } from "../lib/media";
 import { useEditor } from "../store";
 import { FramesPanel } from "./FramesPanel";
@@ -212,23 +212,6 @@ const uploadsMemory: string[] = [];
 const videoMemory: { src: string; name: string }[] = [];
 const MAX_CLIP = 90;
 
-function videoInfo(url: string): Promise<{ w: number; h: number; duration: number }> {
-  return new Promise((resolve, reject) => {
-    const v = document.createElement("video");
-    v.preload = "metadata";
-    v.onloadedmetadata = () => {
-      if (Number.isFinite(v.duration)) return resolve({ w: v.videoWidth, h: v.videoHeight, duration: v.duration });
-      // Some recorded WebM files don't know their length until you seek to the end.
-      v.ontimeupdate = () => {
-        v.ontimeupdate = null;
-        resolve({ w: v.videoWidth, h: v.videoHeight, duration: Number.isFinite(v.duration) ? v.duration : 5 });
-      };
-      v.currentTime = 1e7;
-    };
-    v.onerror = reject;
-    v.src = url;
-  });
-}
 
 function PhotosPanel() {
   const { doc, update, notify, setSelected } = useEditor();

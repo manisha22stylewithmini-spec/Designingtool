@@ -2,7 +2,6 @@ import { uid } from "../lib/factory";
 import { useEditor } from "../store";
 import type { El } from "../types";
 
-let clipboard: El[] = [];
 let styleClipboard: { type: El["type"]; style: Partial<El> } | null = null;
 
 const STYLE_KEYS: Record<El["type"], (keyof El)[]> = {
@@ -26,7 +25,7 @@ export function useActions() {
   };
 
   return {
-    hasClipboard: () => clipboard.length > 0,
+    hasClipboard: () => true,
     hasStyle: () => !!styleClipboard,
 
     duplicate() {
@@ -42,16 +41,15 @@ export function useActions() {
       setSelected([]);
       notify("Deleted — ⌘Z to undo");
     },
+    /** Copy / cut / paste go through the system clipboard (see useClipboard). */
     copy() {
-      if (!selectedEls.length) return;
-      clipboard = selectedEls.map((e) => ({ ...e }));
-      notify(`Copied ${clipboard.length} item${clipboard.length > 1 ? "s" : ""} — paste on any slide`);
+      window.dispatchEvent(new CustomEvent("delulu:copy", { detail: { cut: false } }));
+    },
+    cut() {
+      window.dispatchEvent(new CustomEvent("delulu:copy", { detail: { cut: true } }));
     },
     paste() {
-      if (!clipboard.length) return;
-      const copies = clipboard.map((e) => ({ ...e, id: uid(), x: e.x + 24, y: e.y + 24 }));
-      clipboard = copies;
-      insert(copies, "Pasted");
+      window.dispatchEvent(new Event("delulu:paste"));
     },
     copyStyle() {
       const el = selectedEls[0];

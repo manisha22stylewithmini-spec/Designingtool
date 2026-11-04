@@ -48,3 +48,22 @@ export function mediaRatio(src: string, video: boolean): Promise<number> {
     v.src = src;
   });
 }
+
+/** Size and length of a video (handles recorded WebM files that don't report a length). */
+export function videoInfo(url: string): Promise<{ w: number; h: number; duration: number }> {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      if (Number.isFinite(v.duration)) return resolve({ w: v.videoWidth, h: v.videoHeight, duration: v.duration });
+      // Some recorded WebM files don't know their length until you seek to the end.
+      v.ontimeupdate = () => {
+        v.ontimeupdate = null;
+        resolve({ w: v.videoWidth, h: v.videoHeight, duration: Number.isFinite(v.duration) ? v.duration : 5 });
+      };
+      v.currentTime = 1e7;
+    };
+    v.onerror = reject;
+    v.src = url;
+  });
+}
