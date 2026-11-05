@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delulu Craft — Case Study</title>
+<meta name="description" content="A product-design case study: building a free, ad-free, subscription-free studio for designing and animating social posts.">
+<link rel="icon" href="/brand/icon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#ffffff;--card:#faf9ff;--ink:#17141f;--mute:#5d5868;--line:#e7e3da;--brand:#7c3aed;--brand2:#d946ef;--soft:#f3effd;--warn:#fff4d6;--warnink:#7a5a00;--ok:#e6f6ec;--okink:#1b6b3a;--bad:#fdecec;--badink:#9b2c2c}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+.narrow{max-width:720px}
+nav.top{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;gap:18px;align-items:center;height:56px;font-size:14px}
+nav.top b{font-family:Fraunces,serif;font-size:17px}
+nav.top a{color:var(--mute);text-decoration:none}nav.top a:hover{color:var(--ink)}
+nav.top .sp{margin-left:auto}
+nav.top .links{display:flex;gap:16px;overflow-x:auto;white-space:nowrap}
+header.hero{padding:72px 0 40px}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--brand)}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.12;margin:0}
+h1{font-size:clamp(38px,6vw,64px);margin:14px 0 18px;letter-spacing:-.02em}
+h2{font-size:clamp(28px,4vw,38px);margin:0 0 14px;letter-spacing:-.01em}
+h3{font-size:21px;margin:0 0 6px}
+.lede{font-size:21px;color:var(--mute);max-width:720px;margin:0}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:34px;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:16px}
+.meta small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.meta span{font-weight:600;font-size:15px}
+section{padding:56px 0;border-top:1px solid var(--line)}
+section>.wrap>.num{font-size:12px;letter-spacing:.16em;color:var(--mute);font-weight:700;margin-bottom:8px}
+p{margin:0 0 14px}.mute{color:var(--mute)}
+.pov{background:linear-gradient(135deg,#7c3aed,#d946ef);color:#fff;border-radius:24px;padding:36px;margin:8px 0}
+.pov h2{color:#fff;font-size:clamp(24px,3.4vw,34px)}.pov p{color:#f5eaff;margin:0}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:3px 10px;background:var(--soft);color:var(--brand)}
+.pill.ok{background:var(--ok);color:var(--okink)}.pill.bad{background:var(--bad);color:var(--badink)}
+.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+.card p:last-child{margin:0}
+.pain{display:grid;grid-template-columns:40px 1fr;gap:14px}
+.pain .n{width:40px;height:40px;border-radius:12px;background:var(--bad);color:var(--badink);display:grid;place-items:center;font-weight:700}
+.tr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.tr div{font-size:14.5px;border-radius:10px;padding:10px 12px;line-height:1.5}
+.tr .a{background:var(--bad);color:var(--badink)}.tr .b{background:var(--ok);color:var(--okink)}
+.tr b{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
+@media(max-width:620px){.tr{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:15px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);background:var(--soft)}tr:last-child td{border-bottom:0}
+.scroll{overflow-x:auto}
+.decision{margin:0 0 18px}
+.decision header{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.decision dl{display:grid;grid-template-columns:130px 1fr;gap:8px 16px;margin:0;font-size:15.5px}
+.decision dt{color:var(--mute);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding-top:3px}
+.decision dd{margin:0}
+@media(max-width:620px){.decision dl{grid-template-columns:1fr}.decision dt{padding:0}}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;margin:12px 0}
+.flow span{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-weight:600}
+.flow i{color:var(--mute);font-style:normal}
+.ia{font-family:ui-monospace,Menlo,monospace;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;line-height:1.8;overflow-x:auto;white-space:pre}
+.todo{background:var(--warn);color:var(--warnink);padding:1px 7px;border-radius:6px;font-size:.92em;font-weight:600}
+blockquote{margin:0;padding:18px 22px;border-left:4px solid var(--brand);background:var(--soft);border-radius:0 14px 14px 0;font-family:Fraunces,serif;font-size:21px;line-height:1.4}
+.stat{font-family:Fraunces,serif;font-size:34px;font-weight:700;color:var(--brand);line-height:1}
+.note{font-size:14px;color:var(--mute);background:var(--soft);border-radius:12px;padding:12px 14px}
+footer{padding:48px 0 80px;border-top:1px solid var(--line);color:var(--mute);font-size:14px}
+.cta{display:inline-block;background:var(--ink);color:var(--bg);text-decoration:none;font-weight:600;border-radius:99px;padding:11px 20px;margin:4px 8px 4px 0}
+.cta.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+ul.tight{margin:0 0 14px;padding-left:20px}ul.tight li{margin-bottom:6px}
+
+:root{color-scheme:light}
+body{position:relative}
+body::before{content:"";position:absolute;left:0;right:0;top:0;height:640px;background:radial-gradient(900px 380px at 12% -8%,#ece4ff 0%,transparent 70%),radial-gradient(800px 360px at 92% 0%,#ffe3f4 0%,transparent 70%);z-index:-1;pointer-events:none}
+.card,table,.facts,.meta,.pair,.nope div{box-shadow:0 1px 2px rgba(23,20,31,.04),0 8px 24px -12px rgba(76,29,149,.14)}
+.shot{margin:0;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 2px 4px rgba(23,20,31,.05),0 24px 48px -24px rgba(76,29,149,.30)}
+.shot .bar{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#f1eef8;border-bottom:1px solid var(--line)}
+.shot .bar i{width:10px;height:10px;border-radius:50%;background:#d6d0e4;display:block}
+.shot .bar span{margin-left:10px;font-size:12px;color:var(--mute);background:#fff;border-radius:99px;padding:2px 14px;flex:1;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shot img{display:block;width:100%;height:auto}
+.shot figcaption{padding:14px 18px 16px;font-size:14.5px;color:var(--mute);background:var(--card);border-top:1px solid var(--line)}
+.shot figcaption b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
+.shots{display:grid;gap:22px}.shots.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
+</style>
+</head>
+<body>
+<nav class="top"><div class="wrap">
+  <b>Delulu Craft</b>
+  <div class="links"><a href="#pov">POV</a><a href="#problem">Problem</a><a href="#pain">Pain points</a><a href="#constraint">Constraint</a><a href="#decisions">Decisions</a><a href="#ui">Interface</a><a href="#iterations">Iterations</a><a href="#tradeoffs">Trade-offs</a><a href="#measure">Measuring</a></div>
+  <a class="sp" href="/portfolio.html">Portfolio view →</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">Case study · Product design</div>
+  <h1>One free studio for every social post — static, carousel and reel.</h1>
+  <p class="lede">Delulu Craft is a design and animation studio for people who post for a living or for love. It has no ads, no paid tier and no locked features. This is the thinking behind it: who it is for, what hurt, and why each decision was made.</p>
+  <div class="meta">
+    <div><small>Role</small><span>Product designer · front-end build</span></div>
+    <div><small>Scope</small><span>Research, IA, UX, UI, prototype, shipped web app</span></div>
+    <div><small>Platform</small><span>Web (desktop-first)</span></div>
+    <div><small>Built with</small><span>React · TypeScript · Tailwind</span></div>
+    <div><small>Timeline</small><span><mark class="todo">add dates</mark></span></div>
+    <div><small>Live</small><span><a href="/">designingtool.vercel.app</a></span></div>
+  </div>
+</div></header>
+
+<section id="pov"><div class="wrap">
+  <div class="num">01 — POINT OF VIEW</div>
+  <div class="pov">
+    <h2>Making a good post should not require a subscription, three tools, or a tutorial.</h2>
+    <p>My belief: a creator's only real cost should be their time. When a tool charges for the basics — resizing, brand colours, a clean export — it quietly decides who gets to look professional. I wanted to build the version where that decision is not made for you.</p>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3>For whom</h3><p class="mute">Solo creators, students, small-brand owners and freelancers who run several brands or accounts and post in more than one format.</p></div>
+    <div class="card"><h3>Job to be done</h3><p class="mute">"When I have an idea for a post, help me turn it into the right size and format for the right platform, fast, and find it again later."</p></div>
+    <div class="card"><h3>Promise</h3><p class="mute">No ads. No paid plan. No feature locked behind an upgrade. Clear enough that you never wonder what a button does.</p></div>
+  </div>
+</div></section>
+
+<section id="problem"><div class="wrap narrow">
+  <div class="num">02 — THE PROBLEM</div>
+  <h2>Posting is a pipeline, and the tools treat it as separate jobs.</h2>
+  <p>A single idea often becomes an Instagram carousel, a story, a reel cover, a LinkedIn post and a thumbnail. Each platform wants a different size, and each format wants a different kind of tool: a layout tool for static posts, a vector tool for custom graphics, a video editor for reels, a spreadsheet or folder tree for keeping track.</p>
+  <p>The result is a workflow made of exports, re-imports and re-sizing. The creator is doing the tools' integration work by hand.</p>
+  <blockquote>The problem is not "making a design". It is moving one idea across formats, platforms and brands without losing the thread.</blockquote>
+  <p style="margin-top:18px" class="note"><b>How I framed it.</b> I treated this as a continuity problem — keeping one idea intact from sketch to export to archive — rather than a feature-gap problem. That framing is what led to a unified editor and a library organised by brand, date and platform, instead of yet another template gallery.</p>
+</div></section>
+
+<section id="pain"><div class="wrap">
+  <div class="num">03 — PAIN POINTS</div>
+  <h2>Six pain points, each with a design response.</h2>
+  <p class="mute" style="max-width:720px">Sources: my own posting workflow, a walk-through of mainstream design tools, and feedback while the product was being built. <mark class="todo">Add 3–5 real quotes or session notes here if you have them.</mark></p>
+  <div class="grid" style="margin-top:20px">
+
+    <div class="card pain"><div class="n">1</div><div>
+      <h3>Every platform wants a different size</h3>
+      <p class="mute">Sizes change by platform and by format (feed, story, cover, banner). People guess, crop badly, or search "Instagram size 2025" every time.</p>
+      <div class="tr"><div class="a"><b>Before</b>Remember pixel sizes; resize by hand; things get cropped.</div><div class="b"><b>Response</b>Every platform and variant is a named preset with its use ("takes the most feed space"), safe areas for stories, and any design can be converted to another size.</div></div>
+    </div></div>
+
+    <div class="card pain"><div class="n">2</div><div>
+      <h3>Static, carousel and reel live in different tools</h3>
+      <p class="mute">Moving a still post into a reel, or a carousel into separate posts, means starting again.</p>
+      <div class="tr"><div class="a"><b>Before</b>Three tools, three file formats, three sets of habits.</div><div class="b"><b>Response</b>One editor with <i>post type</i> as a switch: Static, Carousel, Video. The same layers, fonts and brand kit work in all three.</div></div>
+    </div></div>
+
+    <div class="card pain"><div class="n">3</div><div>
+      <h3>The basics sit behind a paywall or an ad</h3>
+      <p class="mute">In the mainstream tools I reviewed, conveniences such as brand kits, one-click resizing and some exports sit on paid plans, and free tiers lean on upsell prompts. <span class="mute">(Verify against each tool's current plans before you publish this page.)</span></p>
+      <div class="tr"><div class="a"><b>Before</b>Free until the moment you need the thing you came for.</div><div class="b"><b>Response</b>Nothing is gated. Fonts, resizing, brand kits, masks, a timeline and export are all included, and there is no ad inventory in the interface.</div></div>
+    </div></div>
+
+    <div class="card pain"><div class="n">4</div><div>
+      <h3>Finished work gets lost</h3>
+      <p class="mute">Designs end up in one flat "recent" list. When you manage several brands, finding "the LinkedIn carousel from last Tuesday" is archaeology.</p>
+      <div class="tr"><div class="a"><b>Before</b>A flat grid sorted by last edit.</div><div class="b"><b>Response</b>A library that mirrors how people think: Brand → Date → Platform → Type → Creatives, with breadcrumbs and a back button on every level.</div></div>
+    </div></div>
+
+    <div class="card pain"><div class="n">5</div><div>
+      <h3>Pro tools are powerful but hostile to a quick post</h3>
+      <p class="mute">Vector and motion tools have the controls creators want (pen tool, anchor editing, masks, keyframes) but bury them in dense panels built for specialists.</p>
+      <div class="tr"><div class="a"><b>Before</b>Choose between easy and capable.</div><div class="b"><b>Response</b>Power is available but not in your face: the right panel appears only when something is selected, the left panel collapses, and a status bar says what the current mode does.</div></div>
+    </div></div>
+
+    <div class="card pain"><div class="n">6</div><div>
+      <h3>Assets are a licensing and cost trap</h3>
+      <p class="mute">Fonts, music and stock images are where "free" tools quietly become paid, or where creators get copyright claims after posting.</p>
+      <div class="tr"><div class="a"><b>Before</b>Premium fonts, music packs and stock are upsells.</div><div class="b"><b>Response</b>Open-licence Google Fonts loaded on demand, a music library synthesised in the browser (so there is nothing to license), and import from your own device for anything else.</div></div>
+    </div></div>
+
+  </div>
+</div></section>
+
+<section id="constraint"><div class="wrap">
+  <div class="num">04 — THE CONSTRAINT</div>
+  <h2>"No ads, no subscription" was a design constraint, not a slogan.</h2>
+  <p style="max-width:720px">Deciding there would be no revenue model forced a set of decisions that a monetised product would never make. Each one is a trade-off I chose on purpose.</p>
+  <div class="scroll"><table>
+    <tr><th>Because there is no…</th><th>The product has to…</th><th>What it cost</th></tr>
+    <tr><td>Ad income</td><td>Keep the interface free of promos, banners and "sponsored" templates, so the canvas gets all the attention.</td><td>No sponsored content to fund features.</td></tr>
+    <tr><td>Subscription</td><td>Include every feature for everyone; never use a lock icon as a nudge.</td><td>No recurring revenue to pay for servers.</td></tr>
+    <tr><td>Server budget</td><td>Be <b>local-first</b>: designs, history, uploads and exports live in the browser, so running it costs almost nothing.</td><td>No automatic cloud sync (see Trade-offs).</td></tr>
+    <tr><td>Licensing budget</td><td>Use open-licence fonts, synthesised music and user-supplied media.</td><td>A smaller, less glamorous asset library than paid stock.</td></tr>
+    <tr><td>Data to sell</td><td>Collect only what sign-in needs; keep creative work out of any analytics pipeline.</td><td>Less usage data to learn from, so I rely on direct feedback.</td></tr>
+  </table></div>
+</div></section>
+
+<section id="decisions"><div class="wrap">
+  <div class="num">05 — KEY DECISIONS</div>
+  <h2>The decisions that shaped the product.</h2>
+  <p class="mute" style="max-width:720px">Each decision lists what I considered, why I chose what I did, and what it costs.</p>
+  <div style="margin-top:22px">
+
+    <article class="card decision">
+      <header><span class="pill">Core model</span><h3>Post type is a feature, not a step</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>A 1-2-3-4 guided wizard (pick platform → format → size → start).</dd>
+        <dt>Chose</dt><dd>A visible switch for Static / Carousel / Video that can be changed any time.</dd>
+        <dt>Why</dt><dd>My first version used a step guide. Feedback was blunt: it repeated information and treated a choice as a process. People do not move through post types in order; they pick one and sometimes change their mind. A switch respects that.</dd>
+        <dt>Cost</dt><dd>The switch has to explain itself, so each option carries a short description of what it does.</dd>
+      </dl>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Mental models</span><h3>"Static" does not mean "one post"; "Carousel" means connected</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>Treating static as a single frame and carousel as a long strip.</dd>
+        <dt>Chose</dt><dd>Static = many independent designs, each with its own size. Carousel = slides that share one size and can share a stretched background. A Fixed / Free canvas toggle sets how much freedom you get.</dd>
+        <dt>Why</dt><dd>Creators batch several one-off posts in a sitting, and they want carousel slides to feel like one continuous piece. Two different mental models need two different behaviours.</dd>
+        <dt>Cost</dt><dd>More states to explain. I limited the "gap between frames" control to Free mode on static designs only, because it is irrelevant elsewhere and would add noise.</dd>
+      </dl>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Simplify</span><h3>Animated posts and reels are the same thing</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>Separate "Animated post" and "Reel" types.</dd>
+        <dt>Chose</dt><dd>One Video type with size choices (9:16, 4:5, 1:1, 16:9).</dd>
+        <dt>Why</dt><dd>The difference was only the frame size. Two names for one workflow is a tax on the user's memory.</dd>
+        <dt>Cost</dt><dd>None found; removing the duplicate made the picker clearer.</dd>
+      </dl>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Information architecture</span><h3>A library that mirrors how people remember work</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>A flat recents grid; folders the user manages by hand; tags.</dd>
+        <dt>Chose</dt><dd>Automatic filing by Brand → Date → Platform → Type, shown as cards with filters, breadcrumbs and a Back control on every level.</dd>
+        <dt>Why</dt><dd>People recall "which brand, roughly when, which platform". Auto-filing removes the chore of organising, while breadcrumbs make the depth safe to explore. Location is also in the URL, so the browser's own back button works.</dd>
+        <dt>Cost</dt><dd>Strict hierarchy is less flexible than free-form tags. Search (⌘K) covers the gap.</dd>
+      </dl>
+      <div class="ia" style="margin-top:14px">Brand
+ └─ Date  (cards, filterable)
+     └─ Platform  (Instagram · LinkedIn · Behance · …)
+         └─ Type  (Static · Carousel · Video)
+             └─ Creatives</div>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Focus</span><h3>Hide what is not in use</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>Always-visible property panels like pro tools.</dd>
+        <dt>Chose</dt><dd>The right panel appears only when something is selected; the left panel collapses and explains how to bring it back; a status bar names the current mode.</dd>
+        <dt>Why</dt><dd>An empty properties panel taking a third of the screen was an early complaint. The canvas is the product, so everything else should earn its space.</dd>
+        <dt>Cost</dt><dd>Less discoverability of properties; mitigated with on-canvas hints and a toast after key actions.</dd>
+      </dl>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Power, gently</span><h3>Pro tools, introduced progressively</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>Keeping the product "simple" by leaving advanced tools out.</dd>
+        <dt>Chose</dt><dd>Pen and pencil with Figma-style anchor editing (double-click an anchor to change corners), masks from shapes or paths, crop handles, scale, canvas expand/trim, and an After-Effects-style keyframe timeline.</dd>
+        <dt>Why</dt><dd>The people I design for do reach for these, and sending them to another tool is exactly the fragmentation I set out to remove. Using familiar interactions from tools they already know lowers the learning cost.</dd>
+        <dt>Cost</dt><dd>More surface area to test and maintain; each tool had to degrade gracefully when unused.</dd>
+      </dl>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Reuse</span><h3>Templates are live layers, and they follow any size</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>Flat template images with a text overlay.</dd>
+        <dt>Chose</dt><dd>Every template is real layers — photo, text, panels. When the design is resized, the photo still covers the frame and text sitting on a screen or board stays on that spot of the photo.</dd>
+        <dt>Why</dt><dd>A template you cannot edit is a poster, not a starting point. Layout conversion has to preserve intent, not just scale numbers.</dd>
+        <dt>Cost</dt><dd>Text baked into a source photo cannot be edited; I cover it with an editable panel where I can.</dd>
+      </dl>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Trust</span><h3>Copy and paste work like the rest of your computer</h3></header>
+      <dl>
+        <dt>Considered</dt><dd>An in-app clipboard only.</dd>
+        <dt>Chose</dt><dd>Real system clipboard: items paste across designs and tabs; text, screenshots, image links and videos paste in from anywhere; copied items also go out as text and a picture.</dd>
+        <dt>Why</dt><dd>A creative tool that breaks ⌘C / ⌘V loses trust instantly. I also left normal copy/paste untouched inside text fields.</dd>
+        <dt>Cost</dt><dd>Browsers differ (Safari and Firefox handle image clipboard writes differently), so I tested the common paths and noted the limits.</dd>
+      </dl>
+    </article>
+
+    <article class="card decision">
+      <header><span class="pill">Memory</span><h3>History is saved automatically, per design</h3></header>
+      <dl>
+        <dt>Chose</dt><dd>Every design keeps its own saved history in the browser, with a History panel to go back.</dd>
+        <dt>Why</dt><dd>Creative work is exploratory; fear of losing a version slows people down. Safety should be invisible and automatic.</dd>
+        <dt>Cost</dt><dd>Stored locally, so clearing browser data erases it (see Trade-offs).</dd>
+      </dl>
+    </article>
+
+  </div>
+</div></section>
+
+<section id="flow"><div class="wrap">
+  <div class="num">06 — THE CORE FLOW</div>
+  <h2>From idea to export without changing tools.</h2>
+  <div class="flow"><span>Sign in</span><i>→</i><span>Home: big “+”</span><i>→</i><span>Pick platform &amp; size, or a template</span><i>→</i><span>Choose Static / Carousel / Video</span><i>→</i><span>Edit on canvas</span><i>→</i><span>Auto-saved to Library</span><i>→</i><span>Export PNG · JPG · ZIP · video</span></div>
+  <p class="mute" style="max-width:720px">The Home screen puts a large create button first, then quick-create tiles by format, then trending ideas, then the user's brands and recent designs. The order reflects frequency: most visits are "start something new" or "continue the last thing".</p>
+</div></section>
+
+<section id="ui"><div class="wrap">
+  <div class="num">07 — HIGH-FIDELITY INTERFACE</div>
+  <h2>The finished interface, from the live product.</h2>
+  <p class="mute" style="max-width:720px">Every screenshot below was captured from the running app, not a mock-up. Wireframes set the structure; these show how the structure, colour and typography came together.</p>
+  <div class="shots" style="margin-top:22px">
+    <figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/02-home.jpg" width="2400" height="1500" loading="lazy" alt="Home dashboard"><figcaption><b>Home dashboard</b>A big create button first, quick-create tiles per platform, then trending ideas, brands and recent designs.</figcaption></figure>
+    <div class="shots two"><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/05-editor-selected.jpg" width="2400" height="1500" loading="lazy" alt="Editor — design mode"><figcaption><b>Editor — design mode</b>Canvas first. The right panel appears only for the selected layer; a status bar explains the current mode.</figcaption></figure><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/07-editor-video-timeline.jpg" width="2400" height="1500" loading="lazy" alt="Editor — video timeline"><figcaption><b>Editor — video timeline</b>Animate mode with entrance, loop and exit motion and a keyframe timeline for every layer.</figcaption></figure></div>
+    <div class="shots two"><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app/#/library</span></div><img src="/ui/06-library.jpg" width="2400" height="1500" loading="lazy" alt="Library — filed by date"><figcaption><b>Library — filed by date</b>Brand → Date → Platform → Type → Creatives, with filters, search and a breadcrumb that always shows where you are.</figcaption></figure><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app/#/templates</span></div><img src="/ui/03-templates.jpg" width="2400" height="1500" loading="lazy" alt="Template gallery"><figcaption><b>Template gallery</b>20 photo templates plus classic ones, shown live at the size you pick.</figcaption></figure></div>
+    <div class="shots two"><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/08-editor-size.jpg" width="2400" height="1500" loading="lazy" alt="Resize to any platform"><figcaption><b>Resize to any platform</b>Pick a preset or any custom size. The design is re-fitted, never stretched.</figcaption></figure><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/09-editor-story.jpg" width="2400" height="1500" loading="lazy" alt="Reel / story layout"><figcaption><b>Reel / story layout</b>The same template rebuilt for 9:16, with layers that stay in place on the photo.</figcaption></figure></div>
+  </div>
+</div></section>
+
+<section id="iterations"><div class="wrap">
+  <div class="num">08 — WHAT I GOT WRONG</div>
+  <h2>Corrections made along the way.</h2>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card"><h3>The step guide</h3><p class="mute">I built a numbered flow that duplicated the post-type choice. It was removed and replaced by the switch described above.</p></div>
+    <div class="card"><h3>Empty slides were purple</h3><p class="mute">A branded gradient on a blank frame looked designed but confused users about what would be exported. Empty frames are now plain white.</p></div>
+    <div class="card"><h3>Always-on right panel</h3><p class="mute">Showing properties with nothing selected wasted space. It now appears on selection only.</p></div>
+    <div class="card"><h3>Two names for video</h3><p class="mute">"Animated" and "Reel" merged into a single Video type with size options.</p></div>
+    <div class="card"><h3>Gap control everywhere</h3><p class="mute">Offered on every mode at first. Now limited to static designs in Free canvas, where it solves a real carousel-building need.</p></div>
+    <div class="card"><h3>Resize broke backgrounds</h3><p class="mute">Early resizing scaled photos uniformly and left gaps. Full-frame photos and panels now keep covering the frame, and layers placed on a photo stay on it.</p></div>
+  </div>
+</div></section>
+
+<section id="tradeoffs"><div class="wrap">
+  <div class="num">09 — HONEST TRADE-OFFS</div>
+  <h2>What this approach costs the user.</h2>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card"><span class="pill bad">Limit</span><h3 style="margin-top:8px">Work lives in one browser</h3><p class="mute">Local-first keeps it free and private, but there is no automatic cloud sync between devices, and clearing site data removes designs. Planned mitigation: export / import of a project file, then optional sync that the user opts into.</p></div>
+    <div class="card"><span class="pill bad">Limit</span><h3 style="margin-top:8px">Smaller asset library</h3><p class="mute">Open-licence fonts and synthesised music are safe but not as rich as paid stock. Users can import their own.</p></div>
+    <div class="card"><span class="pill bad">Limit</span><h3 style="margin-top:8px">Browser differences</h3><p class="mute">Some clipboard and video-recording features behave differently across browsers; Chrome is the most complete.</p></div>
+    <div class="card"><span class="pill ok">Gain</span><h3 style="margin-top:8px">Nothing to upgrade to</h3><p class="mute">The user never meets a locked feature, a watermark or an ad. That predictability is the product's main promise.</p></div>
+  </div>
+</div></section>
+
+<section id="measure"><div class="wrap">
+  <div class="num">10 — HOW I WOULD MEASURE SUCCESS</div>
+  <h2>Proposed measures — targets to validate, not results.</h2>
+  <p class="note">I have not run a formal study yet. These are the measures I would use, and they can be collected without any ad tracking by using opt-in feedback and local, aggregate counters.</p>
+  <div class="grid g3" style="margin-top:18px">
+    <div class="card"><div class="stat">Time to first export</div><p class="mute" style="margin-top:8px">From landing on Home to a downloaded image, for a first-time user, observed in 5 moderated sessions. <mark class="todo">add result</mark></p></div>
+    <div class="card"><div class="stat">Resize success</div><p class="mute" style="margin-top:8px">Share of designs converted to a second size without manual repair.</p></div>
+    <div class="card"><div class="stat">Re-find time</div><p class="mute" style="margin-top:8px">Seconds to locate a design from last week through the library vs. a flat list.</p></div>
+    <div class="card"><div class="stat">Return use</div><p class="mute" style="margin-top:8px">Do people come back to edit an older design, which signals trust in saving and filing?</p></div>
+    <div class="card"><div class="stat">Support questions</div><p class="mute" style="margin-top:8px">Count of "what does this do?" confusions in testing; target is steady decline across rounds.</p></div>
+    <div class="card"><div class="stat">Qualitative</div><p class="mute" style="margin-top:8px">Do people describe it as "free and simple" without being prompted? <mark class="todo">add quotes</mark></p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap narrow">
+  <div class="num">11 — REFLECTION</div>
+  <h2>What I would carry forward.</h2>
+  <ul class="tight">
+    <li><b>Frame the problem as continuity, not features.</b> It led to a unified editor and a library built around memory.</li>
+    <li><b>A constraint can be a design brief.</b> "No ads, no subscription" shaped storage, assets and priorities more than any feature list did.</li>
+    <li><b>Listen for repeated explanations.</b> Every time I had to explain a control, it needed to be removed or renamed.</li>
+    <li><b>Be loud about limits.</b> Saying clearly that work lives in your browser builds more trust than hiding it.</li>
+  </ul>
+  <p style="margin-top:24px"><a class="cta" href="/portfolio.html">See the portfolio view</a><a class="cta alt" href="/">Open the app</a></p>
+</div></section>
+
+<footer><div class="wrap">Delulu Craft — designed &amp; built by Manisha Baroliya. Free to use, no ads, no subscription.</div></footer>
+</body>
+</html>

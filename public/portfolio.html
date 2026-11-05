@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delulu Craft — Portfolio</title>
+<meta name="description" content="Portfolio piece: a free, ad-free, subscription-free studio for designing and animating social posts.">
+<link rel="icon" href="/brand/icon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#ffffff;--card:#faf9ff;--ink:#17141f;--mute:#5d5868;--line:#e7e3da;--brand:#7c3aed;--soft:#f3effd;--bad:#fdecec;--badink:#9b2c2c;--ok:#e6f6ec;--okink:#1b6b3a}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.1;margin:0}
+h1{font-size:clamp(40px,7vw,76px);letter-spacing:-.025em}
+h2{font-size:clamp(26px,3.6vw,36px);margin-bottom:12px}
+h3{font-size:20px;margin-bottom:6px}
+p{margin:0 0 12px}.mute{color:var(--mute)}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--brand)}
+nav{display:flex;align-items:center;gap:18px;height:60px;font-size:14px}
+nav b{font-family:Fraunces,serif;font-size:18px}nav a{color:var(--mute);text-decoration:none}nav a:hover{color:var(--ink)}nav .sp{margin-left:auto}
+.hero{padding:56px 0 36px}
+.hero .lede{font-size:21px;color:var(--mute);max-width:680px;margin:18px 0 0}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.tag{font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 12px}
+.tag.hl{background:var(--soft);color:var(--brand);border-color:transparent}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:30px;padding:18px 20px;background:var(--card);border:1px solid var(--line);border-radius:16px}
+.facts small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:600}.facts span{font-weight:600;font-size:15px}
+.cover{margin:18px 0 0;aspect-ratio:16/8;border-radius:24px;background:linear-gradient(135deg,#7c3aed,#d946ef 60%,#fb923c);display:grid;place-items:center;text-align:center;color:#fff;padding:20px;position:relative;overflow:hidden}
+.cover img{height:clamp(90px,16vw,170px);width:auto;filter:drop-shadow(0 12px 30px rgba(0,0,0,.35))}
+.cover p{margin:10px 0 0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#ffffffcc;font-weight:600}
+section{padding:54px 0;border-top:1px solid var(--line)}
+.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}.card p:last-child{margin:0}
+.big{font-family:Fraunces,serif;font-size:clamp(24px,3.4vw,34px);line-height:1.25;max-width:860px}
+.big em{color:var(--brand);font-style:italic}
+.n{width:34px;height:34px;border-radius:10px;background:var(--bad);color:var(--badink);display:grid;place-items:center;font-weight:700;margin-bottom:12px}
+.n.ok{background:var(--ok);color:var(--okink)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card);margin-bottom:12px}
+.pair>div{padding:18px 20px}.pair>div:first-child{background:var(--bad);color:var(--badink)}.pair>div:last-child{background:var(--ok);color:var(--okink)}
+.pair b{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}.pair p{margin:0;font-size:15.5px}
+@media(max-width:640px){.pair{grid-template-columns:1fr}}
+.nope{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.nope div{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:18px;text-align:center}
+.nope s{display:block;font-weight:700;font-size:18px;color:var(--mute)}.nope span{display:block;font-size:13px;font-weight:700;color:var(--okink);background:var(--ok);border-radius:99px;margin-top:8px;padding:2px 0}
+
+/* ---------- WIREFRAME SLOTS ---------- */
+.wire{margin:0;border:2px dashed #b4a8d4;border-radius:18px;background:repeating-linear-gradient(45deg,transparent 0 12px,color-mix(in srgb,var(--ink) 4%,transparent) 12px 13px);display:flex;flex-direction:column;overflow:hidden}
+.wire .frame{flex:1;display:grid;place-items:center;text-align:center;padding:24px;min-height:240px;position:relative}
+.wire .frame .ph{max-width:300px;color:var(--mute);font-size:14px}
+.wire .frame .ph b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.wire .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--card)}
+.wire figcaption{padding:12px 16px;border-top:1px solid var(--line);background:var(--card);font-size:14px}
+.wire figcaption b{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--brand)}
+.wire.wide .frame{aspect-ratio:16/9}.wire.tall .frame{aspect-ratio:9/16;min-height:0}.wire.sq .frame{aspect-ratio:1/1;min-height:0}
+.wire.hasimg{border-style:solid}
+.wires{display:grid;gap:18px}
+.wires.three{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.hint{font-size:13px;color:var(--mute);background:var(--soft);border-radius:10px;padding:10px 14px;margin-bottom:16px}
+.hint code{font-size:12px}
+
+.steps{display:grid;gap:12px;counter-reset:s}
+.step{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:start}
+.step:before{counter-increment:s;content:counter(s);width:44px;height:44px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:700}
+.btns a{display:inline-block;text-decoration:none;font-weight:600;border-radius:99px;padding:11px 20px;margin:4px 8px 4px 0;background:var(--ink);color:var(--bg)}
+.btns a.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+footer{padding:44px 0 70px;border-top:1px solid var(--line);color:var(--mute);font-size:14px}
+.todo{background:#fff4d6;color:#7a5a00;padding:1px 7px;border-radius:6px;font-weight:600;font-size:.92em}
+
+:root{color-scheme:light}
+body{position:relative}
+body::before{content:"";position:absolute;left:0;right:0;top:0;height:640px;background:radial-gradient(900px 380px at 12% -8%,#ece4ff 0%,transparent 70%),radial-gradient(800px 360px at 92% 0%,#ffe3f4 0%,transparent 70%);z-index:-1;pointer-events:none}
+.card,table,.facts,.meta,.pair,.nope div{box-shadow:0 1px 2px rgba(23,20,31,.04),0 8px 24px -12px rgba(76,29,149,.14)}
+.shot{margin:0;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 2px 4px rgba(23,20,31,.05),0 24px 48px -24px rgba(76,29,149,.30)}
+.shot .bar{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#f1eef8;border-bottom:1px solid var(--line)}
+.shot .bar i{width:10px;height:10px;border-radius:50%;background:#d6d0e4;display:block}
+.shot .bar span{margin-left:10px;font-size:12px;color:var(--mute);background:#fff;border-radius:99px;padding:2px 14px;flex:1;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shot img{display:block;width:100%;height:auto}
+.shot figcaption{padding:14px 18px 16px;font-size:14.5px;color:var(--mute);background:var(--card);border-top:1px solid var(--line)}
+.shot figcaption b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
+.shots{display:grid;gap:22px}.shots.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><b>Manisha Baroliya</b><a class="sp" href="/case-study.html">Read the full case study →</a><a href="/">Open the app</a></nav>
+
+  <header class="hero">
+    <div class="eyebrow">Product design · Web app · 0 ads · 0 subscriptions</div>
+    <h1>Delulu Craft</h1>
+    <p class="lede">A free studio to design and animate social posts — static, carousel and reel — for every platform, with your work filed by brand, date and platform.</p>
+    <div class="tags"><span class="tag hl">No ads</span><span class="tag hl">No paid plan</span><span class="tag hl">No locked features</span><span class="tag">UX research</span><span class="tag">Information architecture</span><span class="tag">Interaction design</span><span class="tag">UI</span><span class="tag">React build</span></div>
+    <div class="facts">
+      <div><small>Role</small><span>Product designer + builder</span></div>
+      <div><small>Platform</small><span>Web, desktop-first</span></div>
+      <div><small>Timeline</small><span><mark class="todo">add dates</mark></span></div>
+      <div><small>Status</small><span>Live — <a href="/">try it</a></span></div>
+    </div>
+    <div class="cover"><div><img src="/brand/pill.png" alt="Delulu Craft by Manisha Baroliya"><p>Design · Animate · Publish</p></div></div>
+  </header>
+
+  <section>
+    <div class="eyebrow">My point of view</div>
+    <p class="big" style="margin-top:12px">Looking professional online should not depend on what you can pay. A creator's only cost should be <em>their time</em>.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">The problem</div>
+    <h2>One idea, five formats, three tools.</h2>
+    <p class="mute" style="max-width:720px">A single post idea becomes a carousel, a story, a reel cover and a LinkedIn post. Each needs a different size and, usually, a different tool. Creators do the integration by hand: export, re-import, resize, lose track.</p>
+    <div class="grid g3" style="margin-top:20px">
+      <div class="card"><div class="n">1</div><h3>Sizes are a memory test</h3><p class="mute">Every platform and format wants different dimensions.</p></div>
+      <div class="card"><div class="n">2</div><h3>Formats are split across tools</h3><p class="mute">Static, carousel and video rarely share a workspace.</p></div>
+      <div class="card"><div class="n">3</div><h3>Basics get paywalled</h3><p class="mute">Brand kits, resizing and exports sit behind plans or upsell prompts.</p></div>
+      <div class="card"><div class="n">4</div><h3>Work gets lost</h3><p class="mute">A flat “recent” list fails once you manage several brands.</p></div>
+      <div class="card"><div class="n">5</div><h3>Pro tools are hostile</h3><p class="mute">Powerful, but built for specialists, not a quick post.</p></div>
+      <div class="card"><div class="n">6</div><h3>Assets hide costs</h3><p class="mute">Fonts, music and stock become upsells or copyright risks.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">The solution</div>
+    <h2>Pain point → design response.</h2>
+    <div style="margin-top:18px">
+      <div class="pair"><div><b>Pain</b><p>I never remember platform sizes.</p></div><div><b>Solution</b><p>Every platform and variant is a named preset with a plain-language use, safe areas for stories, and one-click conversion to any other size.</p></div></div>
+      <div class="pair"><div><b>Pain</b><p>Static, carousel and reels need different tools.</p></div><div><b>Solution</b><p>One editor with a Static / Carousel / Video switch. Same layers, fonts and brand kit everywhere.</p></div></div>
+      <div class="pair"><div><b>Pain</b><p>The basics are locked or interrupted by ads.</p></div><div><b>Solution</b><p>Everything is included for everyone; the interface has no ad space and no lock icons.</p></div></div>
+      <div class="pair"><div><b>Pain</b><p>I cannot find last week's LinkedIn carousel.</p></div><div><b>Solution</b><p>A library filed automatically as Brand → Date → Platform → Type, with breadcrumbs, Back and ⌘K search.</p></div></div>
+      <div class="pair"><div><b>Pain</b><p>Pro tools are too much for a quick post.</p></div><div><b>Solution</b><p>Pen, masks, crop and a keyframe timeline are there, but panels appear only when you select something.</p></div></div>
+      <div class="pair"><div><b>Pain</b><p>Fonts and music cost money or risk claims.</p></div><div><b>Solution</b><p>Open-licence Google Fonts, music synthesised in the browser, and import from your own device.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Constraint as a brief</div>
+    <h2>No ads. No subscription. Here is what that forced.</h2>
+    <div class="nope" style="margin:18px 0">
+      <div><s>Ads</s><span>none</span></div>
+      <div><s>Subscription</s><span>none</span></div>
+      <div><s>Locked features</s><span>none</span></div>
+      <div><s>Watermarks</s><span>none</span></div>
+    </div>
+    <p class="mute" style="max-width:760px">With no revenue model, the product had to be cheap to run, so it is <b>local-first</b>: designs, history and uploads live in the browser. It had to be free of licensing cost, so it uses open fonts and synthesised music. The trade-off is honest: no automatic cloud sync yet — the full case study explains how I planned for it.</p>
+  </section>
+
+  <!-- ===================== WIREFRAMES ===================== -->
+  <section id="wireframes">
+    <div class="eyebrow">Process</div>
+    <h2>Low-fidelity wireframes</h2>
+    <p class="mute" style="max-width:720px">Early structure before visual design: where things live, what is hidden until needed, how a user moves through the product.</p>
+    <p class="hint"><b>How to add yours (delete this note before publishing):</b> drag an image file onto any dashed frame to preview it here, or save your files in <code>public/wireframes/</code> and, in this file, put <code>&lt;img src="/wireframes/home.png" alt="…"&gt;</code> inside the <code>.frame</code> of a slot (delete the <code>.ph</code> text). Change the caption text under each frame to tell the story.</p>
+
+    <!-- Slot A: wide hero wireframe -->
+    <div class="wires" style="margin-bottom:18px">
+      <figure class="wire wide" data-slot>
+        <div class="frame"><div class="ph"><b>Wireframe 01 — Home dashboard</b>Drop your low-fidelity wireframe here (16:9).</div></div>
+        <figcaption><b>Home dashboard</b><span class="mute">Add 1–2 lines: what you were testing here, e.g. “Is a large create button the clearest first action?”</span></figcaption>
+      </figure>
+    </div>
+
+    <!-- Slots B–D: three in a row -->
+    <div class="wires three">
+      <figure class="wire sq" data-slot>
+        <div class="frame"><div class="ph"><b>Wireframe 02 — Create &amp; post type</b>Square slot.</div></div>
+        <figcaption><b>Post type switch</b><span class="mute">Static · Carousel · Video as a feature, not steps.</span></figcaption>
+      </figure>
+      <figure class="wire sq" data-slot>
+        <div class="frame"><div class="ph"><b>Wireframe 03 — Editor</b>Square slot.</div></div>
+        <figcaption><b>Editor layout</b><span class="mute">Canvas first; panels appear only when needed.</span></figcaption>
+      </figure>
+      <figure class="wire sq" data-slot>
+        <div class="frame"><div class="ph"><b>Wireframe 04 — Library</b>Square slot.</div></div>
+        <figcaption><b>Library hierarchy</b><span class="mute">Brand → Date → Platform → Type → Creatives.</span></figcaption>
+      </figure>
+    </div>
+
+    <!-- Slots E–F: two wide -->
+    <div class="wires" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:18px">
+      <figure class="wire wide" data-slot>
+        <div class="frame"><div class="ph"><b>Wireframe 05 — Timeline / video</b>Wide slot (16:9).</div></div>
+        <figcaption><b>Timeline</b><span class="mute">Keyframe controls for animated posts and reels.</span></figcaption>
+      </figure>
+      <figure class="wire wide" data-slot>
+        <div class="frame"><div class="ph"><b>Wireframe 06 — Resize &amp; export</b>Wide slot (16:9).</div></div>
+        <figcaption><b>Resize &amp; export</b><span class="mute">One design converted to several platform sizes.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+  <!-- ====================================================== -->
+
+  <section id="ui">
+    <div class="eyebrow">Interface</div>
+    <h2>High-fidelity UI</h2>
+    <p class="mute" style="max-width:720px">Screens captured from the live product.</p>
+    <div class="shots" style="margin-top:22px">
+      <figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/02-home.jpg" width="2400" height="1500" loading="lazy" alt="Home dashboard"><figcaption><b>Home dashboard</b>A big create button first, quick-create tiles per platform, then trending ideas, brands and recent designs.</figcaption></figure>
+      <div class="shots two"><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/05-editor-selected.jpg" width="2400" height="1500" loading="lazy" alt="Editor — design mode"><figcaption><b>Editor — design mode</b>Canvas first. The right panel appears only for the selected layer; a status bar explains the current mode.</figcaption></figure><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/07-editor-video-timeline.jpg" width="2400" height="1500" loading="lazy" alt="Editor — video timeline"><figcaption><b>Editor — video timeline</b>Animate mode with entrance, loop and exit motion and a keyframe timeline for every layer.</figcaption></figure></div>
+      <div class="shots two"><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app/#/library</span></div><img src="/ui/06-library.jpg" width="2400" height="1500" loading="lazy" alt="Library — filed by date"><figcaption><b>Library — filed by date</b>Brand → Date → Platform → Type → Creatives, with filters, search and a breadcrumb that always shows where you are.</figcaption></figure><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app/#/templates</span></div><img src="/ui/03-templates.jpg" width="2400" height="1500" loading="lazy" alt="Template gallery"><figcaption><b>Template gallery</b>20 photo templates plus classic ones, shown live at the size you pick.</figcaption></figure></div>
+      <div class="shots two"><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/08-editor-size.jpg" width="2400" height="1500" loading="lazy" alt="Resize to any platform"><figcaption><b>Resize to any platform</b>Pick a preset or any custom size. The design is re-fitted, never stretched.</figcaption></figure><figure class="shot"><div class="bar"><i></i><i></i><i></i><span>designingtool.vercel.app</span></div><img src="/ui/09-editor-story.jpg" width="2400" height="1500" loading="lazy" alt="Reel / story layout"><figcaption><b>Reel / story layout</b>The same template rebuilt for 9:16, with layers that stay in place on the photo.</figcaption></figure></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Key decisions</div>
+    <h2>Four calls that shaped it.</h2>
+    <div class="grid g2" style="margin-top:18px">
+      <div class="card"><h3>Post type is a feature, not a step</h3><p class="mute">My first guided flow repeated itself. Replacing it with one clear switch matched how people actually work: pick a type, change your mind.</p></div>
+      <div class="card"><div class="eyebrow" style="display:none"></div><h3>Library mirrors memory</h3><p class="mute">People remember brand, roughly when, and platform — so files sort themselves that way, with breadcrumbs to make depth safe.</p></div>
+      <div class="card"><h3>Hide what is not in use</h3><p class="mute">The properties panel appears only on selection; the left panel collapses. The canvas gets the space.</p></div>
+      <div class="card"><h3>Templates are live layers</h3><p class="mute">Every layer is editable and follows the design to any size, so a template is a starting point, not a poster.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Outcome</div>
+    <h2>What shipped.</h2>
+    <ul style="padding-left:20px;margin:0 0 16px" class="mute">
+      <li>Static, carousel and video in one editor, with presets for every major platform.</li>
+      <li>Pen, masks, crop, timeline, text effects, 60 fonts and a built-in music library.</li>
+      <li>A home dashboard, template gallery and a library filed by brand, date and platform.</li>
+      <li>Automatic saved history; copy and paste that works with the rest of your computer.</li>
+      <li>20 photo templates with fully editable layers.</li>
+    </ul>
+    <p class="mute"><b>Results:</b> <mark class="todo">add usability findings or feedback quotes when you have them</mark></p>
+    <div class="btns" style="margin-top:20px"><a href="/case-study.html">Read the full case study</a><a class="alt" href="/">Open the app</a></div>
+  </section>
+
+  <footer>Designed &amp; built by Manisha Baroliya. Free to use, no ads, no subscription.</footer>
+</div>
+
+<script>
+// Drag a wireframe image onto a dashed frame to preview it (stays in your browser; nothing is uploaded).
+document.querySelectorAll('[data-slot]').forEach(function (slot) {
+  var frame = slot.querySelector('.frame');
+  ['dragenter','dragover'].forEach(function (t) { slot.addEventListener(t, function (e) { e.preventDefault(); slot.style.outline = '3px solid #7c3aed'; }); });
+  ['dragleave','drop'].forEach(function (t) { slot.addEventListener(t, function () { slot.style.outline = ''; }); });
+  slot.addEventListener('drop', function (e) {
+    e.preventDefault();
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f || f.type.indexOf('image/') !== 0) return;
+    var img = frame.querySelector('img') || frame.appendChild(document.createElement('img'));
+    img.alt = 'Low-fidelity wireframe';
+    img.src = URL.createObjectURL(f);
+    slot.classList.add('hasimg');
+  });
+});
+</script>
+</body>
+</html>
