@@ -1,3 +1,4 @@
+import { isVideoEl } from "../lib/factory";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FiCopy, FiLock, FiMaximize, FiMinimize, FiMinus, FiPlus, FiTrash2, FiUnlock } from "react-icons/fi";
 import { MdOutlineFitScreen, MdOutlinePanTool } from "react-icons/md";
@@ -13,7 +14,7 @@ import { ElementView } from "./ElementView";
 import { ContextMenu, CropGhost, handleCursor, Outline, QuickBtn, Ruler, RULER_SIZE, TextEditor, ViewMenu } from "./StageParts";
 import { useActions } from "./useActions";
 import { DrawLayer, Toolbar, toolFromKey, VectorEditor } from "./CanvasTools";
-import { canMask, maskable, nodesInBox, refitPath, shapeToPath } from "../lib/pathOps";
+import { maskable, refitPath, shapeToPath } from "../lib/pathOps";
 
 type SnapLine = { axis: "x" | "y"; pos: number };
 
@@ -528,6 +529,7 @@ export function Stage() {
   };
   const editPoints = (el: El, target: "nodes" | "mask" = "nodes") => {
     if (el.locked) return;
+    if (target === "nodes" && el.subpaths?.length) return ed.notify("This shape has holes or separate pieces, so its points can't be edited — undo the combine (⌘Z) to change it.");
     if (target === "nodes" && el.type === "shape") {
       update((d) => ({ ...d, elements: d.elements.map((x) => (x.id === el.id ? shapeToPath(x) : x)) }));
       ed.notify("Shape turned into an editable path — drag the points");
@@ -705,24 +707,8 @@ export function Stage() {
   };
 
   // ---------- masking: a shape / closed path cuts a photo or video ----------
-  const selEls = els.filter((e) => selected.includes(e.id));
-  const maskPair = (() => {
-    if (selEls.length !== 2) return null;
-    const m = selEls.find(canMask);
-    const t = selEls.find(maskable);
-    return m && t && m.id !== t.id ? { m, t } : null;
-  })();
-  const useAsMask = () => {
-    if (!maskPair) return;
-    const nodes = nodesInBox(maskPair.m, maskPair.t);
-    if (!nodes) return;
-    update((d) => ({
-      ...d,
-      elements: d.elements.filter((e) => e.id !== maskPair.m.id).map((e) => (e.id === maskPair.t.id ? { ...e, maskNodes: nodes, mask: undefined } : e)),
-    }));
-    setSelected([maskPair.t.id]);
-    ed.notify("Masked — the photo now only shows inside the shape. Right-click → Edit mask points to reshape it");
-  };
+  const maskPair = actions.maskPair();
+  const useAsMask = actions.useAsMask;
 
   // ---------- drawing tools ----------
   const onCreate = (el: El, opts: { edit?: boolean; keepTool?: boolean } = {}) => {
@@ -945,7 +931,7 @@ export function Stage() {
                     onPointerDown={handlerFor(i)}
                     onDoubleClick={i === cur ? onDoubleClick : undefined}
                     onHover={i === cur ? setHoverId : undefined}
-                    clock={el.type === "video" ? (animated && i === cur ? { t: time, playing: ed.playing } : null) : undefined}
+                    clock={isVideoEl(el) ? (animated && i === cur ? { t: time, playing: ed.playing } : null) : undefined}
                   />
                 ))}
                 {i === cur && editingEl && (
@@ -1222,6 +1208,16 @@ export function Stage() {
                   ...(single?.type === "video" && animated ? [{ label: "Split clip at playhead", key: "S", run: actions.splitClip, disabled: !actions.canSplit() }] : []),
                   ...(single && (single.type === "path" || single.type === "shape") ? [{ label: "Edit points", key: "Double-click", run: () => editPoints(single) }] : []),
                   ...(maskPair ? [{ label: `Use ${maskPair.m.name} as mask`, run: useAsMask }] : []),
+                  ...(actions.canBoolean("union")
+                    ? [
+                        "-" as const,
+                        { label: "Union", run: () => actions.booleanOp("union") },
+                        { label: "Subtract", run: () => actions.booleanOp("subtract") },
+                        { label: "Intersect", run: () => actions.booleanOp("intersect") },
+                        { label: "Exclude", run: () => actions.booleanOp("exclude") },
+                      ]
+                    : []),
+                  ...(actions.canBoolean("flatten") ? [{ label: "Flatten", run: () => actions.booleanOp("flatten") }] : []),
                   ...(single && maskable(single) && single.maskNodes?.length ? [{ label: "Edit mask points", run: () => editPoints(single, "mask") }] : []),
                   ...(single && maskable(single) && (single.maskNodes?.length || single.mask)
                     ? [{ label: "Remove mask", run: () => updateEls([single.id], { mask: undefined, maskNodes: undefined }) }]
@@ -1307,7 +1303,7 @@ function Artboard({
           {/* neighbouring slides' items that spill onto this one */}
           {d.context?.neighbours.map((el) => (
             <div key={"n" + el.id} className="pointer-events-none">
-              <ElementView el={el} st={STATIC} editing={false} clock={el.type === "video" ? null : undefined} />
+              <ElementView el={el} st={STATIC} editing={false} clock={isVideoEl(el) ? null : undefined} />
             </div>
           ))}
           {children}

@@ -208,3 +208,6 @@ export function filterCss(el: El): string {
   if ((el.blur ?? 0) !== 0) parts.push(`blur(${el.blur}px)`);
   return parts.join(" ") || "none";
 }
+
+/** Video clips, and shapes filled with a video — anything that needs a playing <video>. */
+export const isVideoEl = (e: El) => e.type === "video" || ((e.type === "shape" || e.type === "path") && e.fillKind === "video" && !!e.fillSrc);

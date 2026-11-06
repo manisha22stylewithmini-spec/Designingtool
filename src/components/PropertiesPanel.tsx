@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   FiAlignCenter,
   FiAlignLeft,
@@ -20,12 +21,18 @@ import {
   MdAlignVerticalBottom,
   MdAlignVerticalCenter,
   MdAlignVerticalTop,
+  MdHorizontalDistribute,
+  MdVerticalDistribute,
   MdFlip,
   MdOutlineFormatPaint,
 } from "react-icons/md";
 import { findPlatform, findVariant } from "../data/platforms";
 import { fontDef } from "../data/fonts";
 import { FontPicker } from "./FontPicker";
+import { FillControl } from "./FillControl";
+import { PiAngle, PiCircleHalf, PiExclude, PiFlipHorizontal, PiFlipVertical, PiIntersect, PiStack, PiSubtract, PiUnite } from "react-icons/pi";
+import { MdRotate90DegreesCw } from "react-icons/md";
+import type { BoolOp } from "../lib/boolean";
 import { cn } from "../lib/cn";
 import { coverFrame, filterCss, fitFrame, uid } from "../lib/factory";
 import { mediaRatio } from "../lib/images";
@@ -128,26 +135,49 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
   const allShape = sel.every((e) => e.type === "shape");
   const locked = sel.every((e) => e.locked);
 
-  const align = (how: "left" | "hc" | "right" | "top" | "vc" | "bottom") =>
+  /** One item lines up with the frame; several line up with each other (like Figma). */
+  const align = (how: "left" | "hc" | "right" | "top" | "vc" | "bottom") => {
+    const bs = sel.map(bounds);
+    const box =
+      sel.length > 1
+        ? { left: Math.min(...bs.map((b) => b.left)), right: Math.max(...bs.map((b) => b.right)), top: Math.min(...bs.map((b) => b.top)), bottom: Math.max(...bs.map((b) => b.bottom)) }
+        : { left: 0, right: doc.frame.w, top: 0, bottom: doc.frame.h };
+    const cx = (box.left + box.right) / 2;
+    const cy = (box.top + box.bottom) / 2;
     updateEls(ids, (e) => {
       const b = bounds(e);
-      const W = doc.frame.w;
-      const H = doc.frame.h;
       switch (how) {
         case "left":
-          return { x: e.x - b.left };
+          return { x: e.x + (box.left - b.left) };
         case "hc":
-          return { x: W / 2 - e.w / 2 };
+          return { x: e.x + (cx - b.cx) };
         case "right":
-          return { x: e.x + (W - b.right) };
+          return { x: e.x + (box.right - b.right) };
         case "top":
-          return { y: e.y - b.top };
+          return { y: e.y + (box.top - b.top) };
         case "vc":
-          return { y: H / 2 - e.h / 2 };
+          return { y: e.y + (cy - b.cy) };
         case "bottom":
-          return { y: e.y + (H - b.bottom) };
+          return { y: e.y + (box.bottom - b.bottom) };
       }
     });
+  };
+
+  /** Even gaps between three or more items. */
+  const distribute = (axis: "h" | "v") => {
+    const items = sel.map((e) => ({ id: e.id, b: bounds(e) })).sort((p, q) => (axis === "h" ? p.b.left - q.b.left : p.b.top - q.b.top));
+    const size = (b: ReturnType<typeof bounds>) => (axis === "h" ? b.right - b.left : b.bottom - b.top);
+    const start = axis === "h" ? items[0].b.left : items[0].b.top;
+    const end = axis === "h" ? Math.max(...items.map((i) => i.b.right)) : Math.max(...items.map((i) => i.b.bottom));
+    const gap = (end - start - items.reduce((n, i) => n + size(i.b), 0)) / (items.length - 1);
+    const shift = new Map<string, number>();
+    let at = start;
+    for (const i of items) {
+      shift.set(i.id, at - (axis === "h" ? i.b.left : i.b.top));
+      at += size(i.b) + gap;
+    }
+    updateEls(ids, (e) => (axis === "h" ? { x: e.x + (shift.get(e.id) ?? 0) } : { y: e.y + (shift.get(e.id) ?? 0) }));
+  };
 
   const reorder = (dir: "up" | "down" | "top" | "bottom") =>
     update((d) => {
@@ -227,6 +257,21 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
           <FiTrash2 />
         </IconBtn>
       </div>
+
+      {(actions.maskPair() || actions.canBoolean("flatten")) && (
+        <div className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2.5">
+          {actions.maskPair() && (
+            <button
+              onClick={actions.useAsMask}
+              title="Use the front shape as a mask: the photo or video only shows inside it"
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              <PiCircleHalf className="text-base" /> Use as mask
+            </button>
+          )}
+          {actions.canBoolean("flatten") && <BooleanMenu actions={actions} />}
+        </div>
+      )}
 
       {/* ---------- Text ---------- */}
       {allText && (
@@ -366,22 +411,13 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
       {/* ---------- Shape ---------- */}
       {allShape && (
         <Section title="Shape style">
-          <Row label="Fill">
-            {el.fill === "transparent" ? (
-              <button onClick={() => set({ fill: "#7c3aed" })} className="rounded-lg border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-500 hover:bg-zinc-50">
-                No fill · add
-              </button>
-            ) : (
-              <>
-                <ColorPicker value={el.fill ?? "#000"} onChange={(c, h) => set({ fill: c }, h)} />
-                {el.shape !== "line" && (
-                  <button onClick={() => set({ fill: "transparent", strokeWidth: el.strokeWidth || 6 })} className="text-[11px] text-zinc-400 hover:text-zinc-700">
-                    remove
-                  </button>
-                )}
-              </>
-            )}
-          </Row>
+          {single && el.shape !== "line" ? (
+            <FillControl key={el.id} el={el} set={set} notify={notify} />
+          ) : (
+            <Row label="Fill">
+              <ColorPicker value={el.fill ?? "#000"} onChange={(c, h) => set({ fill: c }, h)} />
+            </Row>
+          )}
           {el.shape !== "line" && (
             <>
               <Slider label="Border" value={el.strokeWidth ?? 0} min={0} max={Math.round(Math.min(el.w, el.h) / 4)} onChange={(v, h) => set({ strokeWidth: v }, h)} />
@@ -588,30 +624,21 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
       {/* ---------- Vector path ---------- */}
       {single && el.type === "path" && (
         <Section title="Path" hint="Drawn with the pen or pencil">
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("postcraft:edit-points", { detail: { id: el.id, target: "nodes" } }))}
-            className="w-full rounded-lg bg-violet-50 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
-          >
-            ✒ Edit points
-          </button>
+          {el.subpaths?.length ? (
+            <p className="rounded-lg bg-zinc-50 p-2 text-[11px] leading-snug text-zinc-500">Made by combining shapes (it has holes or separate pieces), so its points are locked. Change fill, border, size and position freely.</p>
+          ) : (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("postcraft:edit-points", { detail: { id: el.id, target: "nodes" } }))}
+              className="w-full rounded-lg bg-violet-50 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+            >
+              ✒ Edit points
+            </button>
+          )}
           <Row label="Stroke">
             <ColorPicker value={el.stroke ?? "#111111"} onChange={(c, h) => set({ stroke: c }, h)} />
           </Row>
           <Slider label="Width" value={el.strokeWidth ?? 0} min={0} max={80} onChange={(v, h) => set({ strokeWidth: v }, h)} />
-          <Row label="Fill">
-            {!el.fill || el.fill === "transparent" ? (
-              <button onClick={() => set({ fill: "#c4b5fd" })} className="rounded-lg border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-500 hover:bg-zinc-50">
-                No fill · add
-              </button>
-            ) : (
-              <>
-                <ColorPicker value={el.fill} onChange={(c, h) => set({ fill: c }, h)} />
-                <button onClick={() => set({ fill: "transparent" })} className="text-[11px] text-zinc-400 hover:text-zinc-700">
-                  remove
-                </button>
-              </>
-            )}
-          </Row>
+          <FillControl key={el.id} el={el} set={set} notify={notify} />
           <Toggle checked={!!el.closed} onChange={(v) => set({ closed: v })} label="Closed shape (join the ends)" />
           <p className="text-[11px] leading-snug text-zinc-400">Tip: select this path and a photo, then right-click → Use as mask.</p>
         </Section>
@@ -680,39 +707,66 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
       </Section>
 
       <Section title="Position">
-        <div className="grid grid-cols-6 gap-1">
-          {(
-            [
-              ["left", MdAlignHorizontalLeft, "Align to left edge"],
-              ["hc", MdAlignHorizontalCenter, "Centre horizontally"],
-              ["right", MdAlignHorizontalRight, "Align to right edge"],
-              ["top", MdAlignVerticalTop, "Align to top"],
-              ["vc", MdAlignVerticalCenter, "Centre vertically"],
-              ["bottom", MdAlignVerticalBottom, "Align to bottom"],
-            ] as const
-          ).map(([k, Icon, t]) => (
-            <IconBtn key={k} title={t} onClick={() => align(k)} className="h-8 border border-zinc-200">
-              <Icon />
-            </IconBtn>
-          ))}
+        <div className="flex items-center gap-1.5">
+          <div className="grid flex-1 grid-cols-6 gap-1">
+            {(
+              [
+                ["left", MdAlignHorizontalLeft, sel.length > 1 ? "Align left edges" : "Align to left edge"],
+                ["hc", MdAlignHorizontalCenter, sel.length > 1 ? "Centre horizontally together" : "Centre horizontally"],
+                ["right", MdAlignHorizontalRight, sel.length > 1 ? "Align right edges" : "Align to right edge"],
+                ["top", MdAlignVerticalTop, sel.length > 1 ? "Align top edges" : "Align to top"],
+                ["vc", MdAlignVerticalCenter, sel.length > 1 ? "Centre vertically together" : "Centre vertically"],
+                ["bottom", MdAlignVerticalBottom, sel.length > 1 ? "Align bottom edges" : "Align to bottom"],
+              ] as const
+            ).map(([k, Icon, t]) => (
+              <IconBtn key={k} title={t} onClick={() => align(k)} className="h-8 border border-zinc-200">
+                <Icon />
+              </IconBtn>
+            ))}
+          </div>
+          <IconBtn title="Even spacing across (select 3 or more)" onClick={() => distribute("h")} disabled={sel.length < 3} className="h-8 border border-zinc-200">
+            <MdHorizontalDistribute />
+          </IconBtn>
+          <IconBtn title="Even spacing down (select 3 or more)" onClick={() => distribute("v")} disabled={sel.length < 3} className="h-8 border border-zinc-200">
+            <MdVerticalDistribute />
+          </IconBtn>
+        </div>
+        {sel.length > 1 && <p className="-mt-1 text-[11px] text-zinc-400">With several items selected, aligning lines them up with each other.</p>}
+        <div className="flex gap-2">
+          <NumberField label="X" value={el.x} mixed={sel.some((e) => Math.round(e.x) !== Math.round(el.x))} onChange={(n) => set({ x: n })} />
+          <NumberField label="Y" value={el.y} mixed={sel.some((e) => Math.round(e.y) !== Math.round(el.y))} onChange={(n) => set({ y: n })} />
         </div>
         {single && (
-          <>
-            <div className="flex gap-2">
-              <NumberField label="X" value={el.x} onChange={(n) => set({ x: n })} />
-              <NumberField label="Y" value={el.y} onChange={(n) => set({ y: n })} />
-            </div>
-            <div className="flex gap-2">
-              <NumberField label="W" value={el.w} onChange={(n) => set({ w: Math.max(4, n) })} />
-              {el.type !== "text" ? (
-                <NumberField label="H" value={el.h} onChange={(n) => set({ h: Math.max(2, n) })} />
-              ) : (
-                <div className="flex flex-1 items-center px-2 text-[11px] text-zinc-400">Height: auto</div>
-              )}
-            </div>
-            <Slider label="Rotate" value={el.rotation} min={-180} max={180} unit="°" onChange={(v, h) => set({ rotation: v }, h)} />
-          </>
+          <div className="flex gap-2">
+            <NumberField label="W" value={el.w} onChange={(n) => set({ w: Math.max(4, n) })} />
+            {el.type !== "text" ? (
+              <NumberField label="H" value={el.h} onChange={(n) => set({ h: Math.max(2, n) })} />
+            ) : (
+              <div className="flex flex-1 items-center px-2 text-[11px] text-zinc-400">Height: auto</div>
+            )}
+          </div>
         )}
+        <div className="flex items-center gap-2">
+          <NumberField
+            label={<PiAngle className="text-sm" title="Rotation" />}
+            value={el.rotation}
+            suffix="°"
+            mixed={sel.some((e) => Math.round(e.rotation) !== Math.round(el.rotation))}
+            onChange={(n) => set({ rotation: ((((n + 180) % 360) + 360) % 360) - 180 })}
+          />
+          <div className="flex gap-1">
+            <IconBtn title="Rotate 90° clockwise" onClick={() => updateEls(ids, (e) => ({ rotation: (((e.rotation + 90 + 180) % 360) + 360) % 360 - 180 }))} className="h-8 w-8 border border-zinc-200">
+              <MdRotate90DegreesCw />
+            </IconBtn>
+            <IconBtn title="Flip horizontally" active={sel.every((e) => e.flipX)} onClick={() => updateEls(ids, (e) => ({ flipX: !e.flipX }))} className="h-8 w-8 border border-zinc-200">
+              <PiFlipHorizontal />
+            </IconBtn>
+            <IconBtn title="Flip vertically" active={sel.every((e) => e.flipY)} onClick={() => updateEls(ids, (e) => ({ flipY: !e.flipY }))} className="h-8 w-8 border border-zinc-200">
+              <PiFlipVertical />
+            </IconBtn>
+          </div>
+        </div>
+        {single && <Slider label="Rotate" value={el.rotation} min={-180} max={180} unit="°" onChange={(v, h) => set({ rotation: v }, h)} />}
         <Slider label="Opacity" value={Math.round(el.opacity * 100)} min={0} max={100} unit="%" onChange={(v, h) => set({ opacity: v / 100 }, h)} />
       </Section>
 
@@ -729,6 +783,60 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
           </div>
         )}
       </Section>
+    </div>
+  );
+}
+
+const BOOLEAN_ITEMS: { op: BoolOp; label: string; hint: string; icon: React.ReactNode }[] = [
+  { op: "union", label: "Union", hint: "Merge the shapes into one", icon: <PiUnite /> },
+  { op: "subtract", label: "Subtract", hint: "Cut the front shapes out of the back one", icon: <PiSubtract /> },
+  { op: "intersect", label: "Intersect", hint: "Keep only the overlapping part", icon: <PiIntersect /> },
+  { op: "exclude", label: "Exclude", hint: "Keep everything except the overlap", icon: <PiExclude /> },
+  { op: "flatten", label: "Flatten", hint: "Turn shapes into one editable vector", icon: <PiStack /> },
+];
+
+/** Union / Subtract / Intersect / Exclude / Flatten, like Figma's boolean menu. */
+function BooleanMenu({ actions }: { actions: ReturnType<typeof useActions> }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("pointerdown", close);
+    return () => window.removeEventListener("pointerdown", close);
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50" title="Combine shapes into new shapes">
+        <PiUnite className="text-base" /> Combine <FiChevronsDown className="text-[10px] text-zinc-400" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-40 mt-1 w-56 rounded-xl border border-zinc-200 bg-white p-1 shadow-xl">
+          {BOOLEAN_ITEMS.map((it, i) => {
+            const ok = actions.canBoolean(it.op);
+            return (
+              <div key={it.op}>
+                {i === 4 && <div className="my-1 h-px bg-zinc-100" />}
+                <button
+                  disabled={!ok}
+                  onClick={() => {
+                    setOpen(false);
+                    actions.booleanOp(it.op);
+                  }}
+                  title={ok ? it.hint : "Select two or more shapes first"}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left hover:bg-zinc-100 disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <span className="text-base text-zinc-500">{it.icon}</span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium text-zinc-800">{it.label}</span>
+                    <span className="block truncate text-[10px] text-zinc-400">{it.hint}</span>
+                  </span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

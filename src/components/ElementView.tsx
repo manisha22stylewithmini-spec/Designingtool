@@ -1,6 +1,8 @@
-import { memo, useEffect, useRef, type CSSProperties } from "react";
+import { memo, useEffect, useId, useRef, type CSSProperties } from "react";
 import { clipTime, type AnimState } from "../lib/animation";
-import { filterCss } from "../lib/factory";
+import { filterCss, isVideoEl } from "../lib/factory";
+import { elementPath } from "../lib/paint";
+import { svgPaint } from "./Paint";
 import { layoutText, shapePath } from "../lib/geometry";
 import { resolveSrc } from "../lib/media";
 import { nodesToPath } from "../lib/vector";
@@ -67,6 +69,28 @@ function VideoContent({ el, clock, visible }: { el: El; clock?: { t: number; pla
   );
 }
 
+/** A looping, silent video used as a shape fill. Plays with the timeline; otherwise shows the frame at the playhead. */
+function FillVideo({ el, clock, visible }: { el: El; clock?: { t: number; playing: boolean } | null; visible: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const playing = !!clock?.playing && visible;
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    v.muted = true;
+    v.loop = true;
+    if (playing) {
+      if (v.paused) v.play().catch(() => undefined);
+    } else {
+      if (!v.paused) v.pause();
+      const len = v.duration || 0;
+      const t = len ? (clock?.t ?? 0) % len : 0;
+      if (Math.abs(v.currentTime - t) > 0.04) v.currentTime = t;
+    }
+  });
+  useEffect(() => () => ref.current?.pause(), []);
+  return <video ref={ref} src={resolveSrc(el.fillSrc)} playsInline preload="auto" muted loop style={mediaCss(el)} />;
+}
+
 function TextContent({ el, chars }: { el: El; chars: number }) {
   const lines = layoutText(el);
   const lh = (el.fontSize ?? 32) * (el.lineHeight ?? 1.2);
@@ -120,10 +144,14 @@ function TextContent({ el, chars }: { el: El; chars: number }) {
   );
 }
 
+/** Mirror text, shapes and paths (photos and videos flip inside their own box). */
+const flipCss = (el: El) => (el.type !== "image" && el.type !== "video" && (el.flipX || el.flipY) ? ` scale(${el.flipX ? -1 : 1}, ${el.flipY ? -1 : 1})` : "");
+
 function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHover, clock }: Props) {
+  const pid = "pt" + useId().replace(/[^a-zA-Z0-9]/g, "");
   if (el.hidden) return null;
   // video clips stay mounted while off-screen so they don't reload
-  if (!st.visible && el.type !== "video") return null;
+  if (!st.visible && !isVideoEl(el)) return null;
   const style: CSSProperties = {
     position: "absolute",
     left: el.x,
@@ -131,14 +159,54 @@ function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHov
     width: el.w,
     height: el.h,
     opacity: el.opacity * st.opacity,
-    transform: `translate(${st.tx}px, ${st.ty}px) rotate(${el.rotation + st.rotate}deg) scale(${st.scale})`,
+    transform: `translate(${st.tx}px, ${st.ty}px) rotate(${el.rotation + st.rotate}deg) scale(${st.scale})${flipCss(el)}`,
     clipPath: st.reveal < 1 ? `inset(-50% ${(1 - st.reveal) * 100}% -50% -50%)` : undefined,
     cursor: el.locked ? "default" : "move",
     visibility: editing || !st.visible ? "hidden" : undefined,
   };
 
   let content: React.ReactNode = null;
-  if (el.type === "shape") {
+  if ((el.type === "shape" && el.shape !== "line") || el.type === "path") {
+    const sw = el.strokeWidth ?? 0;
+    const isPath = el.type === "path";
+    const shadowFilter = el.shadow.on ? `drop-shadow(${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur / 2}px ${el.shadow.color})` : undefined;
+    const outline = elementPath(el, isPath ? 0 : sw / 2);
+    const strokeProps = {
+      stroke: sw > 0 ? el.stroke : "none",
+      strokeWidth: sw,
+      strokeLinejoin: "round" as const,
+      strokeLinecap: isPath ? ("round" as const) : undefined,
+    };
+    if (el.fillSrc) {
+      // filled with a picture / GIF / video: clip the media to the outline, then draw the border on top
+      const url = resolveSrc(el.fillSrc);
+      content = (
+        <div style={{ width: "100%", height: "100%", position: "relative", filter: shadowFilter }}>
+          <div style={{ width: "100%", height: "100%", overflow: "hidden", clipPath: `path("${elementPath(el)}")` }}>
+            {el.fillKind === "video" ? (
+              <FillVideo el={el} clock={clock} visible={st.visible} />
+            ) : (
+              <img src={url} draggable={false} crossOrigin={url?.startsWith("http") ? "anonymous" : undefined} style={mediaCss(el)} />
+            )}
+          </div>
+          {sw > 0 && (
+            <svg width={el.w} height={el.h} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+              <path d={outline} fill="none" {...strokeProps} />
+            </svg>
+          )}
+        </div>
+      );
+    } else {
+      const paint = svgPaint(el, pid, isPath ? "none" : "#000000");
+      content = (
+        <svg width={el.w} height={el.h} style={{ overflow: "visible", display: "block", filter: shadowFilter }}>
+          {paint.defs && <defs>{paint.defs}</defs>}
+          <path d={outline} fill={paint.fill} {...strokeProps} />
+        </svg>
+      );
+    }
+  } else if (el.type === "shape") {
+    // lines are drawn with their colour only
     const sw = el.strokeWidth ?? 0;
     content = (
       <svg
@@ -150,34 +218,7 @@ function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHov
           filter: el.shadow.on ? `drop-shadow(${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur / 2}px ${el.shadow.color})` : undefined,
         }}
       >
-        <path
-          d={shapePath(el.shape!, el.w, el.h, el.radius, sw / 2)}
-          fill={el.fill}
-          stroke={sw > 0 ? el.stroke : "none"}
-          strokeWidth={sw}
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  } else if (el.type === "path") {
-    content = (
-      <svg
-        width={el.w}
-        height={el.h}
-        style={{
-          overflow: "visible",
-          display: "block",
-          filter: el.shadow.on ? `drop-shadow(${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur / 2}px ${el.shadow.color})` : undefined,
-        }}
-      >
-        <path
-          d={nodesToPath(el.nodes ?? [], !!el.closed, el.w, el.h)}
-          fill={el.fill && el.fill !== "transparent" ? el.fill : "none"}
-          stroke={(el.strokeWidth ?? 0) > 0 ? el.stroke : "none"}
-          strokeWidth={el.strokeWidth}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <path d={shapePath(el.shape!, el.w, el.h, el.radius, sw / 2)} fill={el.fill} stroke={sw > 0 ? el.stroke : "none"} strokeWidth={sw} strokeLinejoin="round" />
       </svg>
     );
   } else if (el.type === "image" || el.type === "video") {

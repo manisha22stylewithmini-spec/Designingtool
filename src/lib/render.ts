@@ -1,11 +1,12 @@
 import type { Background, Doc, El } from "../types";
 import { animState, atTime, STATIC, type AnimState } from "./animation";
-import { filterCss } from "./factory";
+import { filterCss, isVideoEl } from "./factory";
 import { fontString, layoutText, lineWidth, shapePath } from "./geometry";
 import { resolveSrc } from "./media";
 import { effectParams } from "./textEffects";
 import { ensureFont } from "../data/fonts";
 import { nodesToPath } from "./vector";
+import { elementPath, gradientLine as elGradientLine, patternTile, sortedStops } from "./paint";
 
 const imgCache = new Map<string, HTMLImageElement>();
 /** Hidden <video> players used while exporting, keyed by element id. */
@@ -25,7 +26,7 @@ function seek(v: HTMLVideoElement, t: number): Promise<void> {
 }
 
 async function videoPlayer(el: El): Promise<HTMLVideoElement | undefined> {
-  const src = resolveSrc(el.src);
+  const src = resolveSrc(el.type === "video" ? el.src : el.fillSrc);
   if (!src) return undefined;
   let v = videoPlayers.get(el.id);
   if (!v || v.dataset.src !== src) {
@@ -64,13 +65,15 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
 export async function preloadDoc(doc: Doc): Promise<void> {
   const all = [...doc.elements, ...(doc.context?.neighbours ?? [])];
   const srcs = all.filter((e) => e.type === "image" && e.src).map((e) => e.src!);
+  // shapes filled with a picture / GIF
+  for (const e of all) if ((e.type === "shape" || e.type === "path") && e.fillSrc && e.fillKind !== "video") srcs.push(resolveSrc(e.fillSrc) ?? "");
   if (doc.background.kind === "image") srcs.push(doc.background.src);
   const texts = all.filter((e) => e.type === "text");
   await Promise.all(texts.map((e) => ensureFont(e.fontFamily)));
   const fonts = texts.map((e) => fontString(e));
   await Promise.all([
-    ...all.filter((e) => e.type === "video").map((e) => videoPlayer(e).catch(() => undefined)),
-    ...srcs.map((s) => loadImage(s).catch(() => undefined)),
+    ...all.filter(isVideoEl).map((e) => videoPlayer(e).catch(() => undefined)),
+    ...srcs.filter(Boolean).map((s) => loadImage(s).catch(() => undefined)),
     ...fonts.map((f) => document.fonts.load(f).catch(() => undefined)),
   ]);
 }
@@ -117,6 +120,47 @@ function drawBackground(c: CanvasRenderingContext2D, bg: Background, w: number, 
   }
 }
 
+const tileCache = new Map<string, HTMLCanvasElement>();
+
+/** Flat colour, gradient or repeating pattern for a shape's fill. */
+function canvasPaint(c: CanvasRenderingContext2D, el: El): string | CanvasGradient | CanvasPattern {
+  if (el.fillPattern) {
+    const p = el.fillPattern;
+    const key = JSON.stringify(p);
+    let tile = tileCache.get(key);
+    if (!tile) {
+      const t = patternTile(p);
+      tile = document.createElement("canvas");
+      tile.width = Math.max(1, Math.ceil(t.w));
+      tile.height = Math.max(1, Math.ceil(t.h));
+      const g = tile.getContext("2d")!;
+      g.fillStyle = p.bg;
+      g.fillRect(0, 0, t.w, t.h);
+      g.fillStyle = p.color;
+      for (const q of t.prims) {
+        if (q.t === "rect") g.fillRect(q.x, q.y, q.w, q.h);
+        else {
+          g.beginPath();
+          g.arc(q.x, q.y, q.r, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
+      tileCache.set(key, tile);
+    }
+    return c.createPattern(tile, "repeat") ?? p.bg;
+  }
+  if (el.fillGradient) {
+    const g = el.fillGradient;
+    const grad =
+      g.type === "radial"
+        ? c.createRadialGradient(el.w / 2, el.h / 2, 0, el.w / 2, el.h / 2, Math.max(el.w, el.h) / 2)
+        : c.createLinearGradient(...elGradientLine(g.angle, el.w, el.h));
+    for (const s of sortedStops(g)) grad.addColorStop(Math.min(1, Math.max(0, s.pos)), s.color);
+    return grad;
+  }
+  return el.fill ?? "#000";
+}
+
 function applyShadow(c: CanvasRenderingContext2D, el: El) {
   if (!el.shadow.on) return;
   c.shadowColor = el.shadow.color;
@@ -132,6 +176,7 @@ function drawElement(c: CanvasRenderingContext2D, el: El, st: AnimState) {
   c.translate(el.x + el.w / 2 + st.tx, el.y + el.h / 2 + st.ty);
   c.rotate(((el.rotation + st.rotate) * Math.PI) / 180);
   c.scale(st.scale, st.scale);
+  if (el.type !== "image" && el.type !== "video" && (el.flipX || el.flipY)) c.scale(el.flipX ? -1 : 1, el.flipY ? -1 : 1);
   c.translate(-el.w / 2, -el.h / 2);
 
   if (st.reveal < 1) {
@@ -140,7 +185,48 @@ function drawElement(c: CanvasRenderingContext2D, el: El, st: AnimState) {
     c.clip();
   }
 
-  if (el.type === "shape") {
+  if ((el.type === "shape" && el.shape !== "line") || el.type === "path") {
+    const sw = el.strokeWidth ?? 0;
+    const isPath = el.type === "path";
+    const fillPath = new Path2D(elementPath(el));
+    const strokePath = new Path2D(elementPath(el, isPath ? 0 : sw / 2));
+    let shadowUsed = false;
+    if (el.fillSrc) {
+      const url = resolveSrc(el.fillSrc);
+      const v = el.fillKind === "video" ? videoPlayers.get(el.id) : undefined;
+      const img: CanvasImageSource | undefined = el.fillKind === "video" ? (v && v.readyState >= 2 ? v : undefined) : url ? imgCache.get(url) : undefined;
+      if (el.shadow.on) {
+        c.save();
+        applyShadow(c, el);
+        c.fillStyle = "#fff";
+        c.fill(fillPath);
+        c.restore();
+      }
+      c.save();
+      c.clip(fillPath);
+      if (img) drawCover(c, img as HTMLImageElement | HTMLVideoElement, el.w, el.h, el.cropZoom ?? 1, el.cropX ?? 0.5, el.cropY ?? 0.5);
+      c.restore();
+      shadowUsed = true;
+    } else {
+      const filled = !!(el.fillGradient || el.fillPattern || (el.fill ? el.fill !== "transparent" : !isPath));
+      if (filled) {
+        applyShadow(c, el);
+        c.fillStyle = canvasPaint(c, el);
+        c.fill(fillPath);
+        c.shadowColor = "transparent";
+        shadowUsed = el.shadow.on;
+      }
+    }
+    if (sw > 0) {
+      if (!shadowUsed) applyShadow(c, el); // border-only shapes cast the shadow from their outline
+      c.lineWidth = sw;
+      c.strokeStyle = el.stroke ?? "#000";
+      c.lineJoin = "round";
+      if (isPath) c.lineCap = "round";
+      c.stroke(strokePath);
+    }
+  } else if (el.type === "shape") {
+    // lines
     const sw = el.strokeWidth ?? 0;
     const p = new Path2D(shapePath(el.shape!, el.w, el.h, el.radius, sw / 2));
     applyShadow(c, el);
@@ -151,21 +237,6 @@ function drawElement(c: CanvasRenderingContext2D, el: El, st: AnimState) {
       c.lineWidth = sw;
       c.strokeStyle = el.stroke ?? "#000";
       c.lineJoin = "round";
-      c.stroke(p);
-    }
-  } else if (el.type === "path") {
-    const p = new Path2D(nodesToPath(el.nodes ?? [], !!el.closed, el.w, el.h));
-    applyShadow(c, el);
-    if (el.fill && el.fill !== "transparent") {
-      c.fillStyle = el.fill;
-      c.fill(p);
-      c.shadowColor = "transparent";
-    }
-    if ((el.strokeWidth ?? 0) > 0) {
-      c.lineWidth = el.strokeWidth!;
-      c.strokeStyle = el.stroke ?? "#000";
-      c.lineJoin = "round";
-      c.lineCap = "round";
       c.stroke(p);
     }
   } else if (el.type === "image" || el.type === "video") {

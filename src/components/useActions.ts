@@ -1,4 +1,6 @@
+import { combine, combinable, type BoolOp } from "../lib/boolean";
 import { uid } from "../lib/factory";
+import { canMask, maskable, nodesInBox } from "../lib/pathOps";
 import { useEditor } from "../store";
 import type { El } from "../types";
 
@@ -111,6 +113,45 @@ export function useActions() {
     canSplit: () => {
       const el = selectedEls[0];
       return !!el && el.type === "video" && time > el.anim.start + 0.1 && time < el.anim.end - 0.1;
+    },
+    /** Union / Subtract / Intersect / Exclude / Flatten on the selected shapes and paths. */
+    booleanOp(op: BoolOp) {
+      const sel = doc.elements.filter((e) => ids.includes(e.id)); // back → front
+      const { el, message } = combine(sel, op);
+      if (!el) return notify(message ?? "Select two or more shapes first.");
+      update((d) => {
+        const first = d.elements.findIndex((e) => ids.includes(e.id));
+        const rest = d.elements.filter((e) => !ids.includes(e.id));
+        rest.splice(Math.max(0, first), 0, el);
+        return { ...d, elements: rest };
+      });
+      setSelected([el.id]);
+      notify(`${el.name} done — ⌘Z to undo`);
+    },
+    canBoolean(op: BoolOp) {
+      const sel = selectedEls;
+      if (!sel.length || !sel.every(combinable)) return false;
+      return op === "flatten" ? !(sel.length === 1 && sel[0].type === "path") : sel.length >= 2;
+    },
+    /** The front-most shape / closed path among the selection cuts the photos and videos selected with it. */
+    maskPair() {
+      const els = doc.elements.filter((e) => ids.includes(e.id));
+      const m = [...els].reverse().find(canMask);
+      const targets = els.filter((e) => maskable(e) && e.id !== m?.id);
+      return m && targets.length ? { m, targets } : null;
+    },
+    useAsMask() {
+      const els = doc.elements.filter((e) => ids.includes(e.id));
+      const m = [...els].reverse().find(canMask);
+      const targets = els.filter((e) => maskable(e) && e.id !== m?.id);
+      if (!m || !targets.length) return notify("Select a shape (or closed path) together with a photo or video, then choose Use as mask.");
+      const nodes = new Map(targets.map((t) => [t.id, nodesInBox(m, t)]));
+      update((d) => ({
+        ...d,
+        elements: d.elements.filter((e) => e.id !== m.id).map((e) => (nodes.get(e.id) ? { ...e, maskNodes: nodes.get(e.id)!, mask: undefined } : e)),
+      }));
+      setSelected(targets.map((t) => t.id));
+      notify("Masked — the photo now only shows inside the shape. Right-click → Edit mask points to reshape it");
     },
     selectAll() {
       setSelected(doc.elements.filter((x) => !x.hidden).map((x) => x.id));

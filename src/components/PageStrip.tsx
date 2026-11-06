@@ -1,3 +1,4 @@
+import { isVideoEl } from "../lib/factory";
 import { useState } from "react";
 import { FiChevronLeft, FiChevronRight, FiCopy, FiPlus, FiTrash2 } from "react-icons/fi";
 import { STATIC } from "../lib/animation";
@@ -19,10 +20,10 @@ function Thumb({ index }: { index: number }) {
       <div className="pointer-events-none absolute top-0 left-0" style={{ width: w, height: h, transform: `scale(${s})`, transformOrigin: "0 0", ...(span ? {} : bgCss(d.background)) }}>
         {span && <div className="absolute top-0" style={{ left: -span.offset, width: span.width, height: h, ...bgCss(d.background) }} />}
         {d.context?.neighbours.map((el) => (
-          <ElementView key={"n" + el.id} el={el} st={STATIC} editing={false} clock={el.type === "video" ? null : undefined} />
+          <ElementView key={"n" + el.id} el={el} st={STATIC} editing={false} clock={isVideoEl(el) ? null : undefined} />
         ))}
         {d.elements.map((el) => (
-          <ElementView key={el.id} el={el} st={STATIC} editing={false} clock={el.type === "video" ? null : undefined} />
+          <ElementView key={el.id} el={el} st={STATIC} editing={false} clock={isVideoEl(el) ? null : undefined} />
         ))}
       </div>
     </div>

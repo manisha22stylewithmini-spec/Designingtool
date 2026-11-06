@@ -1,5 +1,6 @@
 import type { Doc } from "../types";
 import { clipTime } from "./animation";
+import { isVideoEl } from "./factory";
 import { preloadDoc, renderDoc, videoPlayers } from "./render";
 import { zipFiles } from "./zip";
 import { resolveSrc } from "./media";
@@ -86,7 +87,7 @@ export async function exportVideo(doc: Doc, name: string, onProgress: (p: number
   const stream = canvas.captureStream(30);
 
   // Route the clips' sound into the recording (not to the speakers).
-  const clips = doc.elements.filter((e) => e.type === "video" && !e.hidden);
+  const clips = doc.elements.filter((e) => isVideoEl(e) && !e.hidden);
   const gains: GainNode[] = [];
   // background music
   const track = doc.audio;
@@ -146,7 +147,8 @@ export async function exportVideo(doc: Doc, name: string, onProgress: (p: number
       const v = videoPlayers.get(el.id);
       if (!v) continue;
       const on = t >= el.anim.start && t <= el.anim.end;
-      const target = clipTime(el, t);
+      // a video filling a shape loops; a video clip plays once from its trim point
+      const target = el.type !== "video" ? (v.duration > 0 ? Math.max(0, t - el.anim.start) % v.duration : 0) : clipTime(el, t);
       if (on) {
         if (v.paused) {
           v.currentTime = target;

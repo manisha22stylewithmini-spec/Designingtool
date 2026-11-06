@@ -79,7 +79,7 @@ function EditorHost({ id }: { id: string }) {
     getProject(id).then(async (p) => {
       if (!p) return setProject(null);
       // uploaded videos / music live in IndexedDB — load them first
-      await restoreMedia([...p.pages.flatMap((pg) => [...pg.elements.map((e) => e.src ?? ""), pg.audio?.src ?? ""])]);
+      await restoreMedia([...p.pages.flatMap((pg) => [...pg.elements.flatMap((e) => [e.src ?? "", e.fillSrc ?? ""]), pg.audio?.src ?? ""])]);
       setProject(prepareProject(p));
     });
   }, [id]);

@@ -1,3 +1,4 @@
+import { isVideoEl } from "../lib/factory";
 import { useEffect, useRef, useState } from "react";
 import { FiCheckCircle, FiFilm, FiImage, FiX } from "react-icons/fi";
 import { findPlatform, findVariant } from "../data/platforms";
@@ -17,7 +18,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [scope, setScope] = useState<"all" | "current">(slides > 1 ? "all" : "current");
   const p = findPlatform(doc.frame.platformId);
   const v = findVariant(doc.frame.platformId, doc.frame.variantId);
-  const hasVideo = doc.elements.some((e) => e.type === "video");
+  const hasVideo = doc.elements.some(isVideoEl);
   const hasAnim = hasVideo || doc.elements.some((e) => e.anim.inType !== "none" || e.anim.loop !== "none" || e.anim.outType !== "none");
   const [kind, setKind] = useState<Kind>(isMotion(postKind) ? "video" : "png");
   const [scale, setScale] = useState(1);

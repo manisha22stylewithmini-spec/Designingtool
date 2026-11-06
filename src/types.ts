@@ -73,6 +73,28 @@ export interface Anim {
   easing: Easing;
 }
 
+export interface GradientStop {
+  pos: number; // 0..1
+  color: string;
+}
+
+/** A shape can be filled with a gradient instead of a flat colour. */
+export interface Gradient {
+  type: "linear" | "radial";
+  angle: number; // degrees, CSS style (90 = left → right); linear only
+  stops: GradientStop[];
+}
+
+export type PatternKind = "dots" | "stripes" | "lines" | "grid" | "checker" | "noise";
+
+/** …or with a repeating pattern. */
+export interface Pattern {
+  kind: PatternKind;
+  color: string;
+  bg: string;
+  size: number; // tile size in px
+}
+
 export interface Shadow {
   on: boolean;
   x: number;
@@ -99,6 +121,8 @@ export interface El {
   // vector path (pen / pencil)
   nodes?: PathNode[];
   closed?: boolean;
+  /** extra closed rings (holes / separate pieces) of a compound path made with Union, Subtract…; normalised to the box */
+  subpaths?: PathNode[][];
 
   /** Keyframed properties — when a property has keyframes they decide its value over time. */
   keys?: Partial<Record<KeyProp, Keyframe[]>>;
@@ -106,6 +130,11 @@ export interface El {
   // shape
   shape?: ShapeKind;
   fill?: string;
+  /** a shape can be filled with a picture, GIF or looping video instead of a colour */
+  fillSrc?: string;
+  fillKind?: "image" | "video";
+  fillGradient?: Gradient;
+  fillPattern?: Pattern;
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
