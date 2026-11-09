@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { FiArrowLeft, FiCalendar, FiChevronRight, FiCopy, FiEdit3, FiFolder, FiMoreHorizontal, FiPlus, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import { findPlatform } from "../../data/platforms";
 import { kindLabel, normKind, POST_KINDS } from "../../data/postKinds";
@@ -109,36 +110,62 @@ function NewButton({ onClick, label = "New creative" }: { onClick: () => void; l
   );
 }
 
+/** The ⋯ menu on cards. It floats above the page (not inside the card) so a card never cuts it off. */
 function Menu({ items }: { items: { label: string; icon: ReactNode; run: () => void; danger?: boolean }[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const open = pos !== null;
+  const W = 176;
+  const toggle = () => {
+    if (open) return setPos(null);
+    const r = btn.current!.getBoundingClientRect();
+    const H = items.length * 34 + 10;
+    const below = r.bottom + 4 + H <= window.innerHeight - 8;
+    setPos({ left: Math.max(8, Math.min(window.innerWidth - W - 8, r.right - W)), top: below ? r.bottom + 4 : Math.max(8, r.top - H - 4) });
+  };
   useEffect(() => {
     if (!open) return;
-    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const close = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!panel.current?.contains(t) && !btn.current?.contains(t)) setPos(null);
+    };
+    const shut = () => setPos(null);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setPos(null);
     window.addEventListener("pointerdown", close);
-    return () => window.removeEventListener("pointerdown", close);
+    window.addEventListener("scroll", shut, true);
+    window.addEventListener("resize", shut);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("scroll", shut, true);
+      window.removeEventListener("resize", shut);
+      window.removeEventListener("keydown", esc);
+    };
   }, [open]);
   return (
-    <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
-      <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900" title="More">
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <button ref={btn} onClick={toggle} className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900" title="More">
         <FiMoreHorizontal />
       </button>
-      {open && (
-        <div className="absolute top-full right-0 z-30 mt-1 w-44 rounded-xl border border-zinc-200 bg-white p-1 shadow-xl">
-          {items.map((it) => (
-            <button
-              key={it.label}
-              onClick={() => {
-                setOpen(false);
-                it.run();
-              }}
-              className={cn("flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs", it.danger ? "text-red-600 hover:bg-red-50" : "text-zinc-700 hover:bg-zinc-100")}
-            >
-              {it.icon} {it.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {pos &&
+        createPortal(
+          <div ref={panel} style={{ position: "fixed", left: pos.left, top: pos.top, width: W }} className="z-[100] rounded-xl border border-zinc-200 bg-white p-1 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {items.map((it) => (
+              <button
+                key={it.label}
+                onClick={() => {
+                  setPos(null);
+                  it.run();
+                }}
+                className={cn("flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs", it.danger ? "text-red-600 hover:bg-red-50" : "text-zinc-700 hover:bg-zinc-100")}
+              >
+                {it.icon} {it.label}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
