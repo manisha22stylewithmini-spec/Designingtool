@@ -1,4 +1,4 @@
-import type { Background, Doc, El } from "../types";
+import type { Background, Doc, El, Gradient } from "../types";
 import { animState, atTime, STATIC, type AnimState } from "./animation";
 import { filterCss, isVideoEl } from "./factory";
 import { fontString, layoutText, lineWidth, shapePath } from "./geometry";
@@ -149,16 +149,14 @@ function canvasPaint(c: CanvasRenderingContext2D, el: El): string | CanvasGradie
     }
     return c.createPattern(tile, "repeat") ?? p.bg;
   }
-  if (el.fillGradient) {
-    const g = el.fillGradient;
-    const grad =
-      g.type === "radial"
-        ? c.createRadialGradient(el.w / 2, el.h / 2, 0, el.w / 2, el.h / 2, Math.max(el.w, el.h) / 2)
-        : c.createLinearGradient(...elGradientLine(g.angle, el.w, el.h));
-    for (const s of sortedStops(g)) grad.addColorStop(Math.min(1, Math.max(0, s.pos)), s.color);
-    return grad;
-  }
+  if (el.fillGradient) return canvasGradient(c, el.fillGradient, el.w, el.h);
   return el.fill ?? "#000";
+}
+
+function canvasGradient(c: CanvasRenderingContext2D, g: Gradient, w: number, h: number): CanvasGradient {
+  const grad = g.type === "radial" ? c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) / 2) : c.createLinearGradient(...elGradientLine(g.angle, w, h));
+  for (const s of sortedStops(g)) grad.addColorStop(Math.min(1, Math.max(0, s.pos)), s.color);
+  return grad;
 }
 
 function applyShadow(c: CanvasRenderingContext2D, el: El) {
@@ -220,7 +218,7 @@ function drawElement(c: CanvasRenderingContext2D, el: El, st: AnimState) {
     if (sw > 0) {
       if (!shadowUsed) applyShadow(c, el); // border-only shapes cast the shadow from their outline
       c.lineWidth = sw;
-      c.strokeStyle = el.stroke ?? "#000";
+      c.strokeStyle = el.strokeGradient ? canvasGradient(c, el.strokeGradient, el.w, el.h) : (el.stroke ?? "#000");
       c.lineJoin = "round";
       if (isPath) c.lineCap = "round";
       c.stroke(strokePath);

@@ -361,3 +361,66 @@ function PatternEditor({ p, onChange }: { p: Pattern; onChange: (p: Pattern, his
     </div>
   );
 }
+
+/**
+ * Colour of a border / stroke: a solid colour (full picker) or a gradient — the same two choices as Fill.
+ */
+export function StrokeControl({ el, set, label }: { el: El; set: (patch: Partial<El>, history?: boolean) => void; label: string }) {
+  const { checkpoint } = useEditor();
+  const [open, setOpen] = useState(false);
+  const [stop, setStop] = useState(0);
+  const grad = el.strokeGradient;
+  const tab = grad ? "gradient" : "solid";
+  const solid = el.stroke && parseColor(el.stroke) ? el.stroke : "#111111";
+
+  const choose = (t: "solid" | "gradient") => {
+    if (t === "solid") set({ strokeGradient: undefined });
+    else if (!grad) {
+      set({ strokeGradient: { ...DEFAULT_GRADIENT, stops: [{ pos: 0, color: solid }, { pos: 1, color: "#ffffff" }] } });
+      setStop(0);
+    }
+  };
+
+  const p = parseColor(el.stroke);
+  return (
+    <>
+      <Row label={label}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className={cn("flex min-w-0 flex-1 items-center gap-2 rounded-lg border bg-white py-1 pr-2 pl-1 text-xs text-zinc-700 hover:border-zinc-300", open ? "border-violet-400" : "border-zinc-200")}
+          title="Change the border colour or make it a gradient"
+        >
+          <span className="checker h-6 w-6 shrink-0 rounded-md border border-black/10" style={{ background: grad ? gradientCss(grad) : el.stroke }} />
+          <span className="flex-1 truncate text-left font-medium">{grad ? `${grad.type === "radial" ? "Radial" : "Linear"} gradient` : p ? toHex(p).toUpperCase() : "Colour"}</span>
+          <FiChevronDown className={cn("shrink-0 text-zinc-400 transition", open && "rotate-180")} />
+        </button>
+      </Row>
+      {open && (
+        <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-2.5">
+          <div className="flex gap-0.5 rounded-lg bg-zinc-100 p-0.5">
+            {(
+              [
+                { id: "solid", label: "Solid colour", icon: <MdOutlineSquare /> },
+                { id: "gradient", label: "Gradient", icon: <MdGradient /> },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                title={t.label}
+                onClick={() => choose(t.id)}
+                className={cn("flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition", tab === t.id ? "bg-white text-violet-700 shadow-sm" : "text-zinc-500 hover:text-zinc-800")}
+              >
+                <span className="text-base">{t.icon}</span> {t.id === "solid" ? "Solid" : "Gradient"}
+              </button>
+            ))}
+          </div>
+          {tab === "solid" && <ColorPanel value={solid} onChange={(c, h) => set({ stroke: c }, h)} />}
+          {tab === "gradient" && grad && (
+            <GradientEditor g={grad} stop={Math.min(stop, grad.stops.length - 1)} setStop={setStop} onChange={(g, history) => set({ strokeGradient: g }, history)} checkpoint={checkpoint} />
+          )}
+        </div>
+      )}
+    </>
+  );
+}

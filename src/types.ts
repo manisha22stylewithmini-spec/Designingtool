@@ -135,6 +135,8 @@ export interface El {
   fillKind?: "image" | "video";
   fillGradient?: Gradient;
   fillPattern?: Pattern;
+  /** the border / stroke can be a gradient too */
+  strokeGradient?: Gradient;
   stroke?: string;
   strokeWidth?: number;
   radius?: number;

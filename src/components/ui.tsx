@@ -122,6 +122,7 @@ function designColours(project: Project): string[] {
       add(e.color);
       add(e.fill);
       e.fillGradient?.stops.forEach((st) => add(st.color));
+      e.strokeGradient?.stops.forEach((st) => add(st.color));
       if (e.fillPattern) {
         add(e.fillPattern.color);
         add(e.fillPattern.bg);

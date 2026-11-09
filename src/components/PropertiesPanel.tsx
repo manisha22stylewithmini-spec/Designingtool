@@ -29,7 +29,7 @@ import {
 import { findPlatform, findVariant } from "../data/platforms";
 import { fontDef } from "../data/fonts";
 import { FontPicker } from "./FontPicker";
-import { FillControl } from "./FillControl";
+import { FillControl, StrokeControl } from "./FillControl";
 import { PiAngle, PiCircleHalf, PiExclude, PiFlipHorizontal, PiFlipVertical, PiIntersect, PiStack, PiSubtract, PiUnite } from "react-icons/pi";
 import { MdRotate90DegreesCw } from "react-icons/md";
 import type { BoolOp } from "../lib/boolean";
@@ -422,9 +422,13 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
             <>
               <Slider label="Border" value={el.strokeWidth ?? 0} min={0} max={Math.round(Math.min(el.w, el.h) / 4)} onChange={(v, h) => set({ strokeWidth: v }, h)} />
               {(el.strokeWidth ?? 0) > 0 && (
-                <Row label="Border colour">
-                  <ColorPicker value={el.stroke ?? "#000"} onChange={(c, h) => set({ stroke: c }, h)} />
-                </Row>
+                single ? (
+                  <StrokeControl key={el.id} el={el} set={set} label="Border colour" />
+                ) : (
+                  <Row label="Border colour">
+                    <ColorPicker value={el.stroke ?? "#000"} onChange={(c, h) => set({ stroke: c }, h)} />
+                  </Row>
+                )
               )}
             </>
           )}
@@ -634,9 +638,7 @@ export function PropertiesPanel({ onOpenTab }: { onOpenTab: (t: "frames" | "back
               ✒ Edit points
             </button>
           )}
-          <Row label="Stroke">
-            <ColorPicker value={el.stroke ?? "#111111"} onChange={(c, h) => set({ stroke: c }, h)} />
-          </Row>
+          <StrokeControl key={el.id} el={el} set={set} label="Stroke" />
           <Slider label="Width" value={el.strokeWidth ?? 0} min={0} max={80} onChange={(v, h) => set({ strokeWidth: v }, h)} />
           <FillControl key={el.id} el={el} set={set} notify={notify} />
           <Toggle checked={!!el.closed} onChange={(v) => set({ closed: v })} label="Closed shape (join the ends)" />

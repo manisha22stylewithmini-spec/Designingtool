@@ -2,7 +2,7 @@ import { memo, useEffect, useId, useRef, type CSSProperties } from "react";
 import { clipTime, type AnimState } from "../lib/animation";
 import { filterCss, isVideoEl } from "../lib/factory";
 import { elementPath } from "../lib/paint";
-import { svgPaint } from "./Paint";
+import { svgPaint, svgStroke } from "./Paint";
 import { layoutText, shapePath } from "../lib/geometry";
 import { resolveSrc } from "../lib/media";
 import { nodesToPath } from "../lib/vector";
@@ -171,8 +171,9 @@ function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHov
     const isPath = el.type === "path";
     const shadowFilter = el.shadow.on ? `drop-shadow(${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur / 2}px ${el.shadow.color})` : undefined;
     const outline = elementPath(el, isPath ? 0 : sw / 2);
+    const strokePaint = svgStroke(el, pid + "s");
     const strokeProps = {
-      stroke: sw > 0 ? el.stroke : "none",
+      stroke: sw > 0 ? strokePaint.stroke : "none",
       strokeWidth: sw,
       strokeLinejoin: "round" as const,
       strokeLinecap: isPath ? ("round" as const) : undefined,
@@ -191,6 +192,7 @@ function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHov
           </div>
           {sw > 0 && (
             <svg width={el.w} height={el.h} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+              {strokePaint.defs && <defs>{strokePaint.defs}</defs>}
               <path d={outline} fill="none" {...strokeProps} />
             </svg>
           )}
@@ -200,7 +202,12 @@ function ElementViewInner({ el, st, editing, onPointerDown, onDoubleClick, onHov
       const paint = svgPaint(el, pid, isPath ? "none" : "#000000");
       content = (
         <svg width={el.w} height={el.h} style={{ overflow: "visible", display: "block", filter: shadowFilter }}>
-          {paint.defs && <defs>{paint.defs}</defs>}
+          {(paint.defs || strokePaint.defs) && (
+            <defs>
+              {paint.defs}
+              {strokePaint.defs}
+            </defs>
+          )}
           <path d={outline} fill={paint.fill} {...strokeProps} />
         </svg>
       );
